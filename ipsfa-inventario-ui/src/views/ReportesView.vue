@@ -112,6 +112,9 @@
 </template>
 
 <script>
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
+
 export default {
   name: 'ReportesView',
   data() {
@@ -197,10 +200,73 @@ export default {
         }
       }
 
-      alert(
-        `Simulando generación del reporte:\n"${reporte.titulo}" en formato ${formato}.\n` +
-        `Filtros Aplicados: ${JSON.stringify(filtrosAplicados, null, 2) || 'Ninguno'}`
-      );
+      if (formato === 'PDF') {
+        const doc = new jsPDF();
+        const pageHeight = doc.internal.pageSize.height || doc.internal.pageSize.getHeight();
+        const pageWidth = doc.internal.pageSize.width || doc.internal.pageSize.getWidth();
+
+        // Encabezado y Pie de página genéricos
+        const header = (data) => {
+          doc.setFontSize(10);
+          doc.setTextColor(40);
+          doc.setFont('helvetica', 'normal');
+
+          // Simulación de Logo (se necesitaría una imagen real)
+          doc.text("IPSFA", data.settings.margin.left, 20);
+
+          doc.setFontSize(12);
+          doc.text(reporte.titulo, pageWidth / 2, 20, { align: 'center' });
+
+          doc.setFontSize(8);
+          doc.text(`Filtros: ${JSON.stringify(filtrosAplicados, null, 2) || 'Ninguno'}`, data.settings.margin.left, 30);
+          doc.line(data.settings.margin.left, 35, pageWidth - data.settings.margin.right, 35); // Línea separadora
+        };
+
+        const footer = (data) => {
+          const pageCount = doc.internal.getNumberOfPages();
+          doc.setFontSize(8);
+          doc.text(`Fecha de Generación: ${new Date().toLocaleDateString('es-ES')} ${new Date().toLocaleTimeString('es-ES')}`, data.settings.margin.left, pageHeight - 15);
+          doc.text(`Página ${data.pageNumber} de ${pageCount}`, pageWidth - data.settings.margin.right, pageHeight - 15, { align: 'right' });
+          doc.line(data.settings.margin.left, pageHeight - 20, pageWidth - data.settings.margin.right, pageHeight - 20); // Línea separadora
+        };
+
+        // Datos de ejemplo para la tabla (reemplazar con datos reales)
+        const head = [['ID', 'Nombre', 'Categoría', 'Unidad', 'Estado']];
+        const body = [
+          ['1', 'Silla Ejecutiva', 'Mobiliario de Oficina', 'Presidencia', 'Bueno'],
+          ['2', 'Laptop Dell XPS', 'Equipos de Computación', 'Gerencia de Tecnologías', 'Nuevo'],
+          ['3', 'Escritorio de Madera', 'Mobiliario de Oficina', 'Gerencia General', 'Regular'],
+        ];
+
+        // Añadir más datos para probar paginación
+        for (let i = 4; i <= 50; i++) {
+            body.push([`${i}`, `Bien Ejemplo ${i}`, `Categoría Ejemplo ${i % 5 +1}`, `Unidad Ejemplo ${i % 4 + 1}`, 'Bueno']);
+        }
+
+
+        doc.autoTable({
+          head: head,
+          body: body,
+          startY: 40, // Empezar después del encabezado
+          didDrawPage: (data) => { // Usar didDrawPage para añadir encabezado y pie en cada página
+            header(data);
+            footer(data);
+          },
+          margin: { top: 30, bottom: 25 } // Ajustar márgenes para encabezado y pie
+        });
+
+        doc.save(`${reporte.id}_${new Date().toISOString().slice(0,10)}.pdf`);
+
+      } else if (formato === 'Excel') {
+         alert(
+          `Simulando generación del reporte:\n"${reporte.titulo}" en formato ${formato}.\n` +
+          `Filtros Aplicados: ${JSON.stringify(filtrosAplicados, null, 2) || 'Ninguno'}`
+        );
+      } else {
+         alert(
+          `Formato de reporte no soportado: ${formato}`
+        );
+      }
     },
     limpiarFiltros(reporte) {
         reporte.filtrosUI.fechaDesdePicker = null;
