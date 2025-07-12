@@ -11,6 +11,8 @@ from .views import (
     ReporteBienesPorUnidadExcel,
     ReporteBienesDesincorporadosPDF,
     ReporteBienesDesincorporadosExcel,
+    ReporteBienesTrasladadosPDF,
+    ReporteBienesTrasladadosExcel,
     DashboardStatsView,
     BienesUploadView,
     CalcularDepreciacionView,
@@ -37,6 +39,8 @@ urlpatterns = [
     path('reportes/bienes-por-unidad/excel/', ReporteBienesPorUnidadExcel.as_view(), name='reporte-bienes-unidad-excel'),
     path('reportes/bienes-desincorporados/pdf/', ReporteBienesDesincorporadosPDF.as_view(), name='reporte-bienes-desincorporados-pdf'),
     path('reportes/bienes-desincorporados/excel/', ReporteBienesDesincorporadosExcel.as_view(), name='reporte-bienes-desincorporados-excel'),
+    path('reportes/bienes-trasladados/pdf/', ReporteBienesTrasladadosPDF.as_view(), name='reporte-bienes-trasladados-pdf'),
+    path('reportes/bienes-trasladados/excel/', ReporteBienesTrasladadosExcel.as_view(), name='reporte-bienes-trasladados-excel'),
     path('', include(router.urls)),
     path('users/me/', UserDetailView.as_view(), name='user-detail'),
 ]

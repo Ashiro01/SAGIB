@@ -236,12 +236,31 @@ def generar_reporte_desincorporados_pdf(movimientos_queryset, fecha_desde, fecha
 
 def generar_reporte_traslados_pdf(movimientos_queryset, fecha_desde, fecha_hasta, titulo_reporte):
     buffer = BytesIO()
-    doc = SimpleDocTemplate(buffer, pagesize=landscape(letter), rightMargin=40, leftMargin=40, topMargin=40, bottomMargin=40)
+    doc = SimpleDocTemplate(buffer, pagesize=letter, rightMargin=40, leftMargin=40, topMargin=40, bottomMargin=40)
     elementos = []
     styles = getSampleStyleSheet()
 
-    # (Lógica del encabezado con logo y membrete)
-    # ...
+    # Encabezado (Membrete y Logo)
+    logo_path = os.path.join(settings.BASE_DIR, 'static/images/logo_ipsfa.png')
+    logo = None
+    if os.path.exists(logo_path):
+        logo = logo_path
+    membrete_text = (
+        'REPÚBLICA BOLIVARIANA DE VENEZUELA<br/>'
+        'MINISTERIO DEL PODER POPULAR PARA LA DEFENSA<br/>'
+        'VICEMINISTERIO DE SERVICIOS, PERSONAL Y LOGÍSTICA<br/>'
+        'DIRECCIÓN GENERAL DE  EMPRESAS Y SERVICIOS<br/>'
+        'INSTITUTO DE PREVISIÓN SOCIAL DE LA FUERZA ARMADA NACIONAL BOLIVARIANA<br/>'
+        'GERENCIA DE FINANZAS<br/>'
+        'UNIDAD DE BIENES PÚBLICOS'
+    )
+    membrete_paragraph = Paragraph(membrete_text, styles['Normal'])
+    elementos.append(membrete_paragraph)
+    elementos.append(Spacer(1, 0.3*inch))
+
+    def draw_logo(canvas, doc):
+        if logo:
+            canvas.drawImage(logo, doc.leftMargin, doc.height + doc.topMargin - 0.1*inch, width=0.7*inch, height=0.9*inch, mask='auto')
 
     # Título y Rango de Fechas
     titulo = Paragraph(titulo_reporte, styles['h2'])
@@ -254,31 +273,58 @@ def generar_reporte_traslados_pdf(movimientos_queryset, fecha_desde, fecha_hasta
 
     # Tabla de Datos
     columnas = ['N°', 'FECHA', 'CÓDIGO BNM', 'DESCRIPCIÓN', 'UNIDAD ORIGEN', 'UNIDAD DESTINO', 'NUEVO RESPONSABLE', 'N° OFICIO']
-    datos_tabla = [columnas]
+    # Estilo para celdas de la tabla
+    cell_style = styles['Normal'].clone('cell_style')
+    cell_style.fontSize = 8
+    cell_style.leading = 9
+    cell_style.wordWrap = 'LTR'
+    # Estilo para encabezados de la tabla
+    header_style = styles['Normal'].clone('header_style')
+    header_style.fontSize = 8
+    header_style.leading = 9
+    header_style.wordWrap = 'LTR'
+    header_style.alignment = 1
+    # Convertir los títulos de columna en Paragraph con color blanco y negrita
+    columnas_paragraph = [
+        Paragraph(f'<font color="white"><b>{col}</b></font>', header_style) for col in columnas
+    ]
+    datos_tabla = [columnas_paragraph]
     for i, movimiento in enumerate(movimientos_queryset):
         datos_tabla.append([
-            i + 1,
-            movimiento.fecha_movimiento.strftime('%d/%m/%Y'),
-            movimiento.bien.codigo_patrimonial,
-            movimiento.bien.descripcion,
-            movimiento.unidad_origen.nombre if movimiento.unidad_origen else 'N/A',
-            movimiento.unidad_destino.nombre if movimiento.unidad_destino else 'N/A',
-            movimiento.responsable_nuevo_nombre or '',
-            movimiento.numero_oficio_referencia or ''
+            Paragraph(str(i + 1), cell_style),
+            Paragraph(movimiento.fecha_movimiento.strftime('%d/%m/%Y'), cell_style),
+            Paragraph(str(movimiento.bien.codigo_patrimonial), cell_style),
+            Paragraph(str(movimiento.bien.descripcion), cell_style),
+            Paragraph(str(movimiento.unidad_origen.nombre if movimiento.unidad_origen else 'N/A'), cell_style),
+            Paragraph(str(movimiento.unidad_destino.nombre if movimiento.unidad_destino else 'N/A'), cell_style),
+            Paragraph(str(movimiento.responsable_nuevo_nombre or ''), cell_style),
+            Paragraph(str(movimiento.numero_oficio_referencia or ''), cell_style)
         ])
 
-    tabla_reporte = Table(datos_tabla, colWidths=[0.5*inch, 1*inch, 1.3*inch, 2*inch, 1.5*inch, 1.5*inch, 1.5*inch, 0.7*inch])
-    # (Aplica el estilo de tabla que ya tienes)
+    tabla_reporte = Table(datos_tabla, colWidths=[0.4*inch, 0.9*inch, 1*inch, 1.5*inch, 1.2*inch, 1.2*inch, 1.2*inch, 0.6*inch])
     tabla_reporte.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#003366')), ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
         ('ALIGN', (0, 0), (-1, -1), 'CENTER'), ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'), ('GRID', (0, 0), (-1, -1), 1, colors.black)
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'), ('GRID', (0, 0), (-1, -1), 1, colors.black),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
     ]))
     elementos.append(tabla_reporte)
 
-    # (Lógica del pie de página con firma)
-    # ...
+    # Pie de página (Firma)
+    elementos.append(Spacer(1, 0.5*inch))
+    linea_firma = "____________________________________"
+    nombre_firmante = "MY. ANDELSON JOSE PINTO HERRERA"
+    cargo_firmante = "JEFE DEL DEPARTAMENTO DE BIENES PÚBLICOS"
+    p_linea = Paragraph(linea_firma, styles['Normal'])
+    p_linea.style.alignment = 1
+    p_nombre = Paragraph(nombre_firmante, styles['Normal'])
+    p_nombre.style.alignment = 1
+    p_cargo = Paragraph(cargo_firmante, styles['Normal'])
+    p_cargo.style.alignment = 1
+    elementos.append(p_linea)
+    elementos.append(p_nombre)
+    elementos.append(p_cargo)
 
-    doc.build(elementos)
+    doc.build(elementos, onFirstPage=draw_logo)
     buffer.seek(0)
     return buffer

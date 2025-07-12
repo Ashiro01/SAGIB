@@ -593,7 +593,7 @@ class ReporteBienesTrasladadosExcel(APIView):
             movimientos = movimientos.filter(Q(unidad_origen_id=unidad_id) | Q(unidad_destino_id=unidad_id))
 
         titulo = "Relación de Bienes Trasladados"
-        buffer = generar_reporte_traslados_excel(movimientos, fecha_desde, fecha_hasta, titulo)
+        buffer = generar_reporte_traslados_excel(movimientos, titulo, fecha_desde, fecha_hasta)
 
         response = HttpResponse(buffer, content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
         response['Content-Disposition'] = 'attachment; filename="reporte_traslados.xlsx"'

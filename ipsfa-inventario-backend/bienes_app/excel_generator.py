@@ -212,7 +212,7 @@ def generar_reporte_desincorporados_excel(movimientos_queryset, titulo_reporte, 
     final_buffer.seek(0)
     return final_buffer
 
-def generar_reporte_traslados_excel(movimientos_queryset, titulo_reporte):
+def generar_reporte_traslados_excel(movimientos_queryset, titulo_reporte, fecha_desde=None, fecha_hasta=None):
     datos_para_df = []
     for i, movimiento in enumerate(movimientos_queryset):
         datos_para_df.append({
@@ -228,8 +228,96 @@ def generar_reporte_traslados_excel(movimientos_queryset, titulo_reporte):
     df = pd.DataFrame(datos_para_df)
     buffer = BytesIO()
     with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
-        df.to_excel(writer, sheet_name='Traslados', index=False)
-        # (Puedes añadir la lógica de formato de encabezado, logo y auto-ajuste de columnas aquí)
+        df.to_excel(writer, sheet_name='Traslados', index=False, startrow=14)
+        worksheet = writer.sheets['Traslados']
+        col_widths = [7, 22, 22, 35, 28, 28, 28]
+        for i, col in enumerate(df.columns):
+            worksheet.column_dimensions[chr(65 + i)].width = col_widths[i] if i < len(col_widths) else 18
 
     buffer.seek(0)
-    return buffer
+    workbook = load_workbook(buffer)
+    sheet = workbook.active
+    # --- Encabezado y Logo ---
+    logo_path = os.path.join(settings.BASE_DIR, 'static/images/logo_ipsfa.png')
+    if os.path.exists(logo_path):
+        logo = Image(logo_path)
+        logo.width = 75
+        logo.height = 90
+        sheet.add_image(logo, 'B2')
+
+    membrete_text = (
+        'REPÚBLICA BOLIVARIANA DE VENEZUELA\n'
+        'MINISTERIO DEL PODER POPULAR PARA LA DEFENSA\n'
+        'VICEMINISTERIO DE SERVICIOS, PERSONAL Y LOGÍSTICA\n'
+        'DIRECCIÓN GENERAL DE EMPRESAS Y SERVICIOS\n'
+        'INSTITUTO DE PREVISIÓN SOCIAL DE LA FUERZA ARMADA NACIONAL BOLIVARIANA\n'
+        'GERENCIA DE FINANZAS\n'
+        'UNIDAD DE BIENES PÚBLICOS'
+    )
+    sheet.merge_cells('B1:H7')
+    cell = sheet['B1']
+    cell.value = membrete_text
+    cell.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
+    cell.font = Font(bold=True, size=10)
+
+    # --- Título del Reporte ---
+    sheet.merge_cells('A9:H10')
+    cell = sheet['A9']
+    cell.value = titulo_reporte
+    cell.alignment = Alignment(horizontal='center', vertical='center')
+    cell.font = Font(bold=True, size=14)
+
+    # --- Rango de Fechas ---
+    rango_fechas = None
+    if fecha_desde and fecha_hasta:
+        rango_fechas = f"Desde: {fecha_desde}   Hasta: {fecha_hasta}"
+    elif fecha_desde:
+        rango_fechas = f"Desde: {fecha_desde}"
+    elif fecha_hasta:
+        rango_fechas = f"Hasta: {fecha_hasta}"
+
+    if rango_fechas:
+        sheet.merge_cells('A12:H12')
+        cell = sheet['A12']
+        cell.value = rango_fechas
+        cell.alignment = Alignment(horizontal='center', vertical='center')
+        cell.font = Font(bold=True, size=11)
+
+    # --- Color azul claro en encabezado de la tabla ---
+    header_fill = PatternFill(start_color='B7D6F8', end_color='B7D6F8', fill_type='solid')
+    header_row = 15  # Porque la tabla inicia en startrow=14 (fila 15 en Excel)
+    for col in range(1, len(df.columns) + 1):
+        cell = sheet.cell(row=header_row, column=col)
+        cell.fill = header_fill
+        cell.font = Font(bold=True)
+
+    # --- Pie de página (Firma) ---
+    last_row = sheet.max_row + 4
+    sheet.merge_cells(f'A{last_row}:H{last_row}')
+    cell = sheet[f'A{last_row}']
+    cell.value = "____________________________________"
+    cell.alignment = Alignment(horizontal='center')
+
+    sheet.merge_cells(f'A{last_row+1}:H{last_row+1}')
+    cell = sheet[f'A{last_row+1}']
+    cell.value = "MY. ANDELSON JOSE PINTO HERRERA"
+    cell.alignment = Alignment(horizontal='center')
+    cell.font = Font(bold=True)
+
+    sheet.merge_cells(f'A{last_row+2}:H{last_row+2}')
+    cell = sheet[f'A{last_row+2}']
+    cell.value = "JEFE DEL DEPARTAMENTO DE BIENES PÚBLICOS"
+    cell.alignment = Alignment(horizontal='center')
+    cell.font = Font(bold=True)
+
+    # Centrar el contenido de todas las filas de datos
+    data_start_row = 16
+    data_end_row = sheet.max_row
+    for row in sheet.iter_rows(min_row=data_start_row, max_row=data_end_row):
+        for cell in row:
+            cell.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
+
+    final_buffer = BytesIO()
+    workbook.save(final_buffer)
+    final_buffer.seek(0)
+    return final_buffer
