@@ -46,10 +46,10 @@ class ChangePasswordView(generics.UpdateAPIView):
 
         if serializer.is_valid():
             # Verificar la contraseña antigua
-            if not self.object.check_password(serializer.data.get("old_password")):
+            if not self.object.check_password(serializer.validated_data.get("old_password")):
                 return Response({"old_password": ["La contraseña actual es incorrecta."]}, status=status.HTTP_400_BAD_REQUEST)
             # Establecer la nueva contraseña
-            self.object.set_password(serializer.data.get("new_password"))
+            self.object.set_password(serializer.validated_data.get("new_password"))
             self.object.save()
             return Response({"status": "contraseña cambiada exitosamente"}, status=status.HTTP_200_OK)
 
