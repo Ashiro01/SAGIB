@@ -1,3 +1,4 @@
+import os
 """
 Django settings for ipsfa_project project.
 
@@ -45,6 +46,7 @@ INSTALLED_APPS = [
     'unidades_administrativas_app.apps.UnidadesAdministrativasAppConfig',
     'usuarios_app.apps.UsuariosAppConfig',
     'auditoria_app.apps.AuditoriaAppConfig',
+    'perfiles_app.apps.PerfilesAppConfig',
     'rest_framework_simplejwt',
     'rest_framework_simplejwt.token_blacklist',
     'django_filters',
@@ -160,3 +162,7 @@ SIMPLE_JWT = {
     'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': True,
 }
+
+# Configuración para archivos subidos por el usuario (Media)
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')

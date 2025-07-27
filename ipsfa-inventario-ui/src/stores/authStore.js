@@ -60,6 +60,85 @@ export const useAuthStore = defineStore('auth', {
       }
     },
 
+    // NUEVA ACCIÓN para actualizar datos del perfil y foto
+    async updateUserProfile(userData) {
+      this.loading = true;
+      this.error = null;
+      try {
+        const axios = (await import('axios')).default;
+        const formData = new FormData();
+        formData.append('first_name', userData.first_name);
+        formData.append('last_name', userData.last_name);
+        formData.append('email', userData.email);
+
+        // Añadir la foto solo si el usuario seleccionó una nueva
+        if (userData.foto_perfil instanceof File) {
+          formData.append('perfil.foto_perfil', userData.foto_perfil);
+        }
+
+        // Usamos PATCH para una actualización parcial
+        await axios.patch('http://127.0.0.1:8000/api/perfil/me/', formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+            'Authorization': `Bearer ${this.accessToken}`
+          },
+        });
+
+        // Volver a obtener los datos frescos del usuario
+        const userResp = await axios.get('http://127.0.0.1:8000/api/users/me/', {
+          headers: { 'Authorization': `Bearer ${this.accessToken}` }
+        });
+        this.usuario = userResp.data;
+        console.log('Perfil de usuario actualizado:', userResp.data);
+        return userResp.data;
+      } catch (err) {
+        const errorMessage = err.response?.data ? this.formatApiErrors(err.response.data) : 'Error al actualizar el perfil.';
+        this.error = errorMessage;
+        console.error('Error en updateUserProfile:', err.response?.data || err.message);
+        throw new Error(errorMessage);
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    // NUEVA ACCIÓN para cambiar la contraseña
+    async changePassword(passwordData) {
+      this.loading = true;
+      this.error = null;
+      try {
+        const axios = (await import('axios')).default;
+        // Asegurarse de que los tres campos estén presentes y sean string
+        const payload = {
+          old_password: passwordData.old_password ? String(passwordData.old_password) : '',
+          new_password: passwordData.new_password ? String(passwordData.new_password) : '',
+          new_password_confirm: passwordData.new_password_confirm ? String(passwordData.new_password_confirm) : ''
+        };
+        const response = await axios.put('http://127.0.0.1:8000/api/perfil/change-password/', payload, {
+          headers: {
+            'Authorization': `Bearer ${this.accessToken}`
+          }
+        });
+        console.log('Contraseña cambiada:', response.data);
+        return response.data;
+      } catch (err) {
+        // Mejor manejo de errores: mostrar mensaje del backend si existe
+        let errorMessage = 'Error al cambiar la contraseña.';
+        if (err.response && err.response.data) {
+          if (typeof err.response.data === 'string') {
+            errorMessage = err.response.data;
+          } else if (typeof err.response.data === 'object') {
+            // Concatenar todos los mensajes de error
+            errorMessage = Object.values(err.response.data).flat().join(' ');
+          }
+        }
+        this.error = errorMessage;
+        console.error('Error en changePassword:', err.response?.data || err.message);
+        throw new Error(errorMessage);
+      } finally {
+        this.loading = false;
+      }
+    },
+
     // Acción para cerrar sesión
     logout() {
       this.isAuthenticated = false;

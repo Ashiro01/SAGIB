@@ -274,6 +274,55 @@ export const useReporteStore = defineStore('reporte', {
       this.loading = false;
     }
   },
+  // --- NUEVAS ACCIONES PARA REPORTE DE DEPRECIACIÓN ---
+    async generarReporteDepreciacionPDF(filtros) {
+        this.loading = true;
+        this.error = null;
+        try {
+            const response = await apiClient.get('/reportes/depreciacion/pdf/', {
+                params: filtros,
+                responseType: 'blob',
+            });
+            const url = window.URL.createObjectURL(new Blob([response.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', 'reporte_depreciacion_acumulada.pdf');
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(url);
+            return { success: true };
+        } catch (err) {
+            this.error = 'Error al generar el reporte de depreciación en PDF.';
+            throw new Error(this.error);
+        } finally {
+            this.loading = false;
+        }
+    },
+    async generarReporteDepreciacionExcel(filtros) {
+        this.loading = true;
+        this.error = null;
+        try {
+            const response = await apiClient.get('/reportes/depreciacion/excel/', {
+                params: filtros,
+                responseType: 'blob',
+            });
+            const url = window.URL.createObjectURL(new Blob([response.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', 'reporte_depreciacion_acumulada.xlsx');
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(url);
+            return { success: true };
+        } catch (err) {
+            this.error = 'Error al generar el reporte de depreciación en Excel.';
+            throw new Error(this.error);
+        } finally {
+            this.loading = false;
+        }
+    },
  }
 });
 

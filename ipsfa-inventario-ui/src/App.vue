@@ -18,6 +18,12 @@
             <v-list-item-subtitle>Rol: {{ currentUser ? currentUser.rol : '' }}</v-list-item-subtitle>
           </v-list-item>
           <v-divider></v-divider>
+          <v-list-item to="/perfil" link>
+            <template v-slot:prepend>
+              <v-icon>mdi-account-edit-outline</v-icon>
+            </template>
+            <v-list-item-title>Mi Perfil</v-list-item-title>
+          </v-list-item>
           <v-list-item @click="logout" link>
             <template v-slot:prepend>
               <v-icon>mdi-logout</v-icon>

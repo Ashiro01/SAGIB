@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import BienDetailView from '../views/BienDetailView.vue'
+import PerfilView from '../views/PerfilView.vue';
 import DashboardView from '../views/DashboardView.vue'
 import BienesListView from '../views/BienesListView.vue'
 import BienFormView from '../views/BienFormView.vue'
@@ -22,6 +23,12 @@ import AuditLogView from '../views/AuditLogView.vue';
 import CalcularDepreciacionView from '../views/CalcularDepreciacionView.vue';
 
 const routes = [
+  {
+    path: '/perfil',
+    name: 'perfil',
+    component: PerfilView,
+    meta: { requiresAuth: true, breadcrumb: 'Mi Perfil' }
+  },
   {
     path: '/login',
     name: 'login',

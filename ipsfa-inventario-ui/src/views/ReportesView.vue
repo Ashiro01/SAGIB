@@ -198,8 +198,10 @@ export default {
       'generarReportePorUnidadExcel',
       'generarReporteDesincorporadosPDF',
       'generarReporteDesincorporadosExcel',
-      'generarReporteTrasladadosPDF', // <-- NUEVO
-      'generarReporteTrasladadosExcel' // <-- NUEVO
+      'generarReporteTrasladadosPDF',
+      'generarReporteTrasladadosExcel',
+      'generarReporteDepreciacionPDF', // <-- NUEVO
+      'generarReporteDepreciacionExcel' // <-- NUEVO
     ]),
     ...mapActions(useCategoriaStore, ['fetchCategorias']),
     ...mapActions(useUnidadAdministrativaStore, ['fetchUnidades']),
@@ -236,6 +238,12 @@ export default {
           filtros.unidad_id = reporte.filtrosUI.unidad_id;
         }
       }
+      // --- NUEVO CASO PARA DEPRECIACIÓN ACUMULADA ---
+      if (reporte.id === 'depAcumulada') {
+        filtros.fecha_hasta = filtros.fecha_hasta || new Date().toISOString().split('T')[0];
+        if (formato === 'PDF') await reporteStore.generarReporteDepreciacionPDF(filtros);
+        if (formato === 'Excel') await reporteStore.generarReporteDepreciacionExcel(filtros);
+      }
       this.reporteEnProgreso = true;
       this.$emit('show-snackbar', { message: `Generando reporte en ${formato}, por favor espere...`, color: 'info' });
       try {
@@ -262,6 +270,8 @@ export default {
         } else if (reporte.id === 'bienesTrasl') {
           if (formato === 'PDF') await reporteStore.generarReporteTrasladadosPDF(filtros);
           if (formato === 'Excel') await reporteStore.generarReporteTrasladadosExcel(filtros);
+        } else if (reporte.id === 'depAcumulada') {
+          // Ya ejecutado arriba
         } else {
           this.$emit('show-snackbar', {
             message: `Funcionalidad para generar "${reporte.titulo}" en ${formato} no implementada.`,

@@ -13,8 +13,10 @@ from django.shortcuts import get_object_or_404
 import qrcode
 from io import BytesIO
 from decimal import Decimal
-from .pdf_generator import generar_reporte_inventario_pdf, generar_reporte_desincorporados_pdf, generar_reporte_traslados_pdf
-from .excel_generator import generar_reporte_inventario_excel, generar_reporte_desincorporados_excel, generar_reporte_traslados_excel
+from .pdf_generator import generar_reporte_inventario_pdf, generar_reporte_desincorporados_pdf, generar_reporte_traslados_pdf, generar_reporte_depreciacion_pdf
+from .excel_generator import generar_reporte_inventario_excel, generar_reporte_desincorporados_excel, generar_reporte_traslados_excel, generar_reporte_depreciacion_excel
+from datetime import date
+from dateutil.relativedelta import relativedelta
 
 # from unidades_administrativas_app.models import UnidadAdministrativa # Si necesitas la instancia, ya está importada en serializers.py y accesible a través del movimiento
 
@@ -291,17 +293,10 @@ class CalcularDepreciacionView(APIView):
     permission_classes = [permissions.IsAdminUser] # Solo administradores pueden ejecutar este proceso
 
     def post(self, request, *args, **kwargs):
-        mes = request.data.get('mes')
-        anio = request.data.get('anio')
-
-        if not mes or not anio:
-            return Response({'error': 'Mes y año son requeridos.'}, status=status.HTTP_400_BAD_REQUEST)
-
         try:
-            mes = int(mes)
-            anio = int(anio)
-            if not (1 <= mes <= 12 and anio > 2000):
-                raise ValueError()
+            mes_solicitado = int(request.data.get('mes'))
+            anio_solicitado = int(request.data.get('anio'))
+            fecha_fin_solicitada = date(anio_solicitado, mes_solicitado, 1)
         except (ValueError, TypeError):
             return Response({'error': 'Mes o año inválido.'}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -314,57 +309,69 @@ class CalcularDepreciacionView(APIView):
 
         bienes_calculados = 0
         bienes_omitidos = 0
-        errores = []
+        registros_creados = 0
 
         with transaction.atomic():
             for bien in bienes_a_depreciar:
-                if DepreciacionMensual.objects.filter(bien=bien, mes=mes, anio=anio).exists():
-                    bienes_omitidos += 1
-                    continue
-
                 ultimo_calculo = DepreciacionMensual.objects.filter(bien=bien).order_by('-anio', '-mes').first()
-                valor_en_libros_actual = ultimo_calculo.valor_neto_en_libros if ultimo_calculo else bien.valor_unitario_bs
 
-                if valor_en_libros_actual <= bien.valor_residual:
+                fecha_inicio_calculo = date(bien.fecha_adquisicion.year, bien.fecha_adquisicion.month, 1)
+                if ultimo_calculo:
+                    fecha_inicio_calculo = date(ultimo_calculo.anio, ultimo_calculo.mes, 1) + relativedelta(months=1)
+
+                # --- LÓGICA DE "CATCH-UP" ---
+                periodo_actual = fecha_inicio_calculo
+                registros_creados_bien = 0
+                while periodo_actual <= fecha_fin_solicitada:
+                    mes_a_calcular = periodo_actual.month
+                    anio_a_calcular = periodo_actual.year
+
+                    ultimo_calculo_loop = DepreciacionMensual.objects.filter(bien=bien).order_by('-anio', '-mes').first()
+                    valor_en_libros_actual = ultimo_calculo_loop.valor_neto_en_libros if ultimo_calculo_loop else bien.valor_unitario_bs
+
+                    if valor_en_libros_actual <= bien.valor_residual:
+                        break
+
+                    depreciacion_del_mes = Decimal('0.00')
+
+                    if bien.metodo_depreciacion == 'LINEA_RECTA':
+                        vida_util_meses = bien.vida_util_estimada_anios * 12
+                        base_depreciable = bien.valor_unitario_bs - bien.valor_residual
+                        if vida_util_meses > 0:
+                            depreciacion_del_mes = base_depreciable / Decimal(vida_util_meses)
+
+                    elif bien.metodo_depreciacion == 'SALDO_DECRECIENTE':
+                        tasa_depreciacion_anual = (Decimal('1') / Decimal(bien.vida_util_estimada_anios)) * 2
+                        depreciacion_del_mes = (valor_en_libros_actual * tasa_depreciacion_anual) / Decimal('12')
+
+                    if (valor_en_libros_actual - depreciacion_del_mes) < bien.valor_residual:
+                        depreciacion_del_mes = valor_en_libros_actual - bien.valor_residual
+
+                    depreciacion_acumulada_anterior = ultimo_calculo_loop.depreciacion_acumulada if ultimo_calculo_loop else Decimal('0.00')
+                    nueva_depreciacion_acumulada = depreciacion_acumulada_anterior + depreciacion_del_mes
+                    nuevo_valor_neto_en_libros = bien.valor_unitario_bs - nueva_depreciacion_acumulada
+
+                    DepreciacionMensual.objects.create(
+                        bien=bien, mes=mes_a_calcular, anio=anio_a_calcular,
+                        valor_depreciado_mes=depreciacion_del_mes,
+                        depreciacion_acumulada=nueva_depreciacion_acumulada,
+                        valor_neto_en_libros=nuevo_valor_neto_en_libros
+                    )
+                    registros_creados += 1
+                    registros_creados_bien += 1
+
+                    periodo_actual += relativedelta(months=1)
+
+                if registros_creados_bien > 0:
+                    bienes_calculados += 1
+                else:
                     bienes_omitidos += 1
-                    continue
-
-                depreciacion_del_mes = Decimal('0.00')
-
-                if bien.metodo_depreciacion == 'LINEA_RECTA':
-                    vida_util_meses = bien.vida_util_estimada_anios * 12
-                    base_depreciable = bien.valor_unitario_bs - bien.valor_residual
-                    if vida_util_meses > 0:
-                        depreciacion_del_mes = base_depreciable / Decimal(vida_util_meses)
-
-                elif bien.metodo_depreciacion == 'SALDO_DECRECIENTE':
-                    tasa_depreciacion_anual = (Decimal('1') / Decimal(bien.vida_util_estimada_anios)) * 2
-                    depreciacion_del_mes = (valor_en_libros_actual * tasa_depreciacion_anual) / Decimal('12')
-
-                if (valor_en_libros_actual - depreciacion_del_mes) < bien.valor_residual:
-                    depreciacion_del_mes = valor_en_libros_actual - bien.valor_residual
-
-                depreciacion_acumulada_anterior = ultimo_calculo.depreciacion_acumulada if ultimo_calculo else Decimal('0.00')
-                nueva_depreciacion_acumulada = depreciacion_acumulada_anterior + depreciacion_del_mes
-                nuevo_valor_neto_en_libros = bien.valor_unitario_bs - nueva_depreciacion_acumulada
-
-                DepreciacionMensual.objects.create(
-                    bien=bien,
-                    mes=mes,
-                    anio=anio,
-                    valor_depreciado_mes=depreciacion_del_mes,
-                    depreciacion_acumulada=nueva_depreciacion_acumulada,
-                    valor_neto_en_libros=nuevo_valor_neto_en_libros
-                )
-                bienes_calculados += 1
 
         return Response({
-            'status': 'Cálculo de depreciación completado.',
-            'mes': mes,
-            'anio': anio,
-            'bienes_calculados': bienes_calculados,
+            'status': f'Cálculo de depreciación hasta {mes_solicitado}/{anio_solicitado} completado.',
+            'bienes_procesados': bienes_calculados,
             'bienes_omitidos': bienes_omitidos,
-            'errores': errores
+            'total_registros_mensuales_creados': registros_creados,
         }, status=status.HTTP_200_OK)
     
 class ReporteInventarioGeneralPDF(APIView):
@@ -593,8 +600,50 @@ class ReporteBienesTrasladadosExcel(APIView):
             movimientos = movimientos.filter(Q(unidad_origen_id=unidad_id) | Q(unidad_destino_id=unidad_id))
 
         titulo = "Relación de Bienes Trasladados"
-        buffer = generar_reporte_traslados_excel(movimientos, fecha_desde, fecha_hasta, titulo)
+        buffer = generar_reporte_traslados_excel(movimientos, titulo, fecha_desde, fecha_hasta)
 
         response = HttpResponse(buffer, content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
         response['Content-Disposition'] = 'attachment; filename="reporte_traslados.xlsx"'
+        return response
+
+class ReporteDepreciacionPDF(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        fecha_hasta = request.query_params.get('fecha_hasta', date.today().strftime('%Y-%m-%d'))
+        subquery_acumulada = DepreciacionMensual.objects.filter(
+            bien=OuterRef('pk')
+        ).order_by('-anio', '-mes').values('depreciacion_acumulada')[:1]
+        subquery_neto = DepreciacionMensual.objects.filter(
+            bien=OuterRef('pk')
+        ).order_by('-anio', '-mes').values('valor_neto_en_libros')[:1]
+        bienes = Bien.objects.annotate(
+            ultima_depreciacion_acumulada=Subquery(subquery_acumulada),
+            ultimo_valor_neto=Subquery(subquery_neto)
+        ).filter(ultima_depreciacion_acumulada__isnull=False).order_by('codigo_patrimonial')
+        titulo = "REPORTE DE DEPRECIACIÓN ACUMULADA"
+        buffer = generar_reporte_depreciacion_pdf(bienes, fecha_hasta, titulo)
+        response = HttpResponse(buffer, content_type='application/pdf')
+        response['Content-Disposition'] = 'attachment; filename="reporte_depreciacion.pdf"'
+        return response
+
+class ReporteDepreciacionExcel(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        fecha_hasta = request.query_params.get('fecha_hasta', date.today().strftime('%Y-%m-%d'))
+        subquery_acumulada = DepreciacionMensual.objects.filter(
+            bien=OuterRef('pk')
+        ).order_by('-anio', '-mes').values('depreciacion_acumulada')[:1]
+        subquery_neto = DepreciacionMensual.objects.filter(
+            bien=OuterRef('pk')
+        ).order_by('-anio', '-mes').values('valor_neto_en_libros')[:1]
+        bienes = Bien.objects.annotate(
+            ultima_depreciacion_acumulada=Subquery(subquery_acumulada),
+            ultimo_valor_neto=Subquery(subquery_neto)
+        ).filter(ultima_depreciacion_acumulada__isnull=False).order_by('codigo_patrimonial')
+        titulo = "REPORTE DE DEPRECIACIÓN ACUMULADA"
+        buffer = generar_reporte_depreciacion_excel(bienes, titulo)
+        response = HttpResponse(buffer, content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        response['Content-Disposition'] = 'attachment; filename="reporte_depreciacion.xlsx"'
         return response
