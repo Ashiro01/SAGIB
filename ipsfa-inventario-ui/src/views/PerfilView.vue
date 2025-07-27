@@ -1,14 +1,3 @@
-import { onBeforeRouteUpdate } from 'vue';
-  beforeRouteEnter(to, from, next) {
-    // Forzar recarga de datos del usuario al entrar a la ruta
-    next(vm => {
-      if (vm && vm.authStore) {
-        vm.authStore.initialize().then(() => {
-          vm.setUsuarioFromStore();
-        });
-      }
-    });
-  },
 <template>
   <v-container>
     <v-row>
@@ -143,20 +132,76 @@ import { onBeforeRouteUpdate } from 'vue';
     </v-row>
 
     <v-row>
-        <v-col cols="12">
-            <v-card class="mt-6">
-                <v-card-title>Preguntas de Seguridad</v-card-title>
-                <v-card-text>
-                    <p>La gestión de preguntas y respuestas de seguridad se implementará a continuación.</p>
-                </v-card-text>
-            </v-card>
-        </v-col>
+      <v-col cols="12">
+        <v-card class="mt-6">
+          <v-card-title>Preguntas de Seguridad</v-card-title>
+          <v-card-subtitle>Añada hasta 3 preguntas para recuperar su cuenta.</v-card-subtitle>
+          <v-card-text>
+            <v-list v-if="respuestasUsuario.length > 0" lines="two">
+              <v-list-item
+                v-for="respuesta in respuestasUsuario"
+                :key="respuesta.id"
+                :title="respuesta.pregunta_texto"
+                subtitle="Respuesta registrada (oculta por seguridad)"
+              >
+                <template v-slot:append>
+                  <v-btn
+                    color="error"
+                    icon="mdi-delete-outline"
+                    variant="text"
+                    @click="eliminarRespuesta(respuesta.id)"
+                    :loading="isSubmitting"
+                  ></v-btn>
+                </template>
+              </v-list-item>
+            </v-list>
+            <p v-else class="text-grey">Aún no ha añadido ninguna pregunta de seguridad.</p>
+
+            <v-divider class="my-4" v-if="respuestasUsuario.length > 0 && respuestasUsuario.length < 3"></v-divider>
+
+            <div v-if="respuestasUsuario.length < 3">
+              <h4 class="text-h6 mt-4 mb-2">Añadir Nueva Pregunta</h4>
+              <v-form ref="formRespuesta" v-model="formRespuestaValido">
+                <v-select
+                  v-model="nuevaRespuesta.pregunta"
+                  :items="preguntasParaSeleccionar"
+                  item-title="texto"
+                  item-value="id"
+                  label="Seleccione una pregunta"
+                  :rules="[rules.required]"
+                  outlined
+                  dense
+                  no-data-text="No hay más preguntas disponibles"
+                ></v-select>
+                <v-text-field
+                  v-model="nuevaRespuesta.respuesta_plana"
+                  label="Su respuesta (sensible a mayúsculas/minúsculas)"
+                  :rules="[rules.required]"
+                  outlined
+                  dense
+                ></v-text-field>
+              </v-form>
+              <v-card-actions>
+                <v-spacer></v-spacer>
+                <v-btn
+                  color="primary"
+                  @click="guardarRespuesta"
+                  :loading="isSubmitting"
+                  :disabled="!formRespuestaValido"
+                >
+                  Guardar Pregunta
+                </v-btn>
+              </v-card-actions>
+            </div>
+          </v-card-text>
+        </v-card>
+      </v-col>
     </v-row>
   </v-container>
 </template>
 
-<script>
 
+<script>
 
 import { useAuthStore } from '@/stores/authStore';
 
@@ -186,7 +231,7 @@ export default {
         new_password_confirm: '',
       },
       fotoSeleccionada: null,
-      fotoUrl: null, // Para la previsualización y la foto actual
+      fotoUrl: null,
       rules: {
         required: value => !!value || 'Campo requerido.',
         email: value => /.+@.+\..+/.test(value) || 'Debe ser un correo válido.',
@@ -194,11 +239,35 @@ export default {
         passwordMatch: () => this.passwordData.new_password === this.passwordData.new_password_confirm || 'Las contraseñas no coinciden.',
       },
       usuario: null,
+      // --- NUEVO PARA PREGUNTAS DE SEGURIDAD ---
+      nuevaRespuesta: {
+        pregunta: null,
+        respuesta_plana: '',
+      },
+      formRespuestaValido: false,
+      authStore: null,
     };
   },
-  async created() {
-    this.authStore = useAuthStore();
-    await this.cargarPerfilCompleto();
+  computed: {
+    usuarioStore() {
+      return this.authStore ? this.authStore.getCurrentUser : null;
+    },
+    preguntasDisponibles() {
+      return this.authStore ? this.authStore.getPreguntasDisponibles : [];
+    },
+    respuestasUsuario() {
+      return this.authStore ? this.authStore.getRespuestasUsuario : [];
+    },
+    isSubmittingStore() {
+      return this.authStore ? this.authStore.loading : false;
+    },
+    preguntasParaSeleccionar() {
+      const idsRespondidas = new Set(this.respuestasUsuario.map(r => r.pregunta));
+      return this.preguntasDisponibles.filter(p => !idsRespondidas.has(p.id));
+    },
+    isSubmitting() {
+      return this.isSubmittingStore || this.$data.isSubmitting;
+    },
   },
   methods: {
     async cargarPerfilCompleto() {
@@ -214,6 +283,25 @@ export default {
         this.$emit('show-snackbar', { message: 'No se pudo cargar el perfil.', color: 'error' });
       }
     },
+    async fetchSecurityQuestions() {
+      await this.authStore.fetchSecurityQuestions();
+    },
+    async fetchUserSecurityAnswers() {
+      await this.authStore.fetchUserSecurityAnswers();
+    },
+    async saveUserSecurityAnswer(payload) {
+      return await this.authStore.saveUserSecurityAnswer(payload);
+    },
+    async deleteUserSecurityAnswer(answerId) {
+      return await this.authStore.deleteUserSecurityAnswer(answerId);
+    },
+    async updateUserProfile(payload) {
+      return await this.authStore.updateUserProfile(payload);
+    },
+    async changePassword(payload) {
+      return await this.authStore.changePassword(payload);
+    },
+    // ...el resto de métodos existentes sin cambios...
     setUsuarioFromStore() {
       const newVal = this.usuario;
       this.perfilData.username = (newVal && newVal.username) ? newVal.username : '';
@@ -236,7 +324,6 @@ export default {
       this.editandoDatos = true;
     },
     cancelarEdicionDatos() {
-      // Restaurar los datos originales
       this.perfilData = { ...this.perfilDataOriginal };
       this.editandoDatos = false;
     },
@@ -248,10 +335,9 @@ export default {
     async actualizarDatos() {
       const { valid } = await this.$refs.formDatos.validate();
       if (!valid) return;
-
       this.isSubmitting = true;
       try {
-        await this.authStore.updateUserProfile(this.perfilData);
+        await this.updateUserProfile(this.perfilData);
         this.$emit('show-snackbar', { message: 'Datos personales actualizados exitosamente.', color: 'success' });
         this.setUsuarioFromStore();
         this.editandoDatos = false;
@@ -266,9 +352,9 @@ export default {
       this.isSubmitting = true;
       try {
         const payload = { ...this.perfilData, foto_perfil: this.fotoSeleccionada };
-        await this.authStore.updateUserProfile(payload);
+        await this.updateUserProfile(payload);
         this.$emit('show-snackbar', { message: 'Foto de perfil actualizada.', color: 'success' });
-        this.fotoSeleccionada = null; // Limpiar el input
+        this.fotoSeleccionada = null;
         this.setUsuarioFromStore();
       } catch (error) {
         this.$emit('show-snackbar', { message: error.message || 'Error al subir la foto.', color: 'error' });
@@ -279,27 +365,53 @@ export default {
     async guardarCambioContraseña() {
       const { valid } = await this.$refs.formPassword.validate();
       if (!valid) return;
-
       this.isSubmitting = true;
       try {
-        await this.authStore.changePassword(this.passwordData);
+        await this.changePassword(this.passwordData);
         this.$emit('show-snackbar', { message: 'Contraseña cambiada exitosamente.', color: 'success' });
-        this.$refs.formPassword.reset(); // Limpiar el formulario de contraseña
+        this.$refs.formPassword.reset();
       } catch (error) {
         this.$emit('show-snackbar', { message: error.message || 'Error al cambiar la contraseña.', color: 'error' });
       } finally {
         this.isSubmitting = false;
       }
     },
+    // --- NUEVOS MÉTODOS PARA PREGUNTAS DE SEGURIDAD ---
+    async guardarRespuesta() {
+      const { valid } = await this.$refs.formRespuesta.validate();
+      if (!valid) return;
+      try {
+        await this.saveUserSecurityAnswer(this.nuevaRespuesta);
+        this.$emit('show-snackbar', { message: 'Pregunta de seguridad guardada.', color: 'success' });
+        this.$refs.formRespuesta.reset();
+      } catch (error) {
+        this.$emit('show-snackbar', { message: error.message, color: 'error' });
+      }
+    },
+    async eliminarRespuesta(respuestaId) {
+      if (confirm('¿Está seguro de que desea eliminar esta pregunta y su respuesta?')) {
+        try {
+          await this.deleteUserSecurityAnswer(respuestaId);
+          this.$emit('show-snackbar', { message: 'Respuesta eliminada.', color: 'success' });
+        } catch (error) {
+          this.$emit('show-snackbar', { message: error.message, color: 'error' });
+        }
+      }
+    },
+  },
+  async created() {
+    this.authStore = useAuthStore();
+    if (!this.authStore.isUserAuthenticated) {
+      await this.authStore.initialize();
+    }
+    await this.cargarPerfilCompleto();
+    await this.fetchSecurityQuestions();
+    await this.fetchUserSecurityAnswers();
   },
   watch: {
-    // Si el usuario cambia, actualiza los campos del formulario
-    usuario: {
-      handler() {
-        this.setUsuarioFromStore();
-      },
-      deep: true
-    }
+    usuario(val) {
+      this.setUsuarioFromStore();
+    },
   },
 };
 </script>

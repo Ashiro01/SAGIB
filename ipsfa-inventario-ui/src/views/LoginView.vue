@@ -55,7 +55,7 @@
           </v-card-text>
           <v-card-actions class="pa-4">
             <v-spacer></v-spacer>
-            <a href="#" class="caption">¿Olvidó su contraseña?</a>
+            <router-link to="/restablecer-password" class="caption">¿Olvidó su contraseña?</router-link>
           </v-card-actions>
         </v-card>
       </v-col>
