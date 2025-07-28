@@ -132,28 +132,28 @@ export default {
           id: 'invGeneral',
           titulo: 'Inventario General de Bienes',
           descripcion: 'Lista detallada de todos los bienes muebles e inmuebles registrados.',
-          filtros: { incluyeFecha: false, incluyeCategoria: true, incluyeUnidad: true, incluyeEstadoBien: true },
+          filtros: { incluyeFecha: true, incluyeCategoria: false, incluyeUnidad: false, incluyeEstadoBien: false },
           filtrosUI: { fechaDesdePicker: null, fechaDesdeFormateada: null, menuFechaDesde: false, fechaHastaPicker: null, fechaHastaFormateada: null, menuFechaHasta: false, categoria_id: null, unidad_id: null, estado_bien: null }
         },
         {
           id: 'bienesPorCat',
           titulo: 'Bienes por Categoría',
           descripcion: 'Agrupación de bienes según su categoría asignada.',
-          filtros: { incluyeFecha: false, incluyeCategoria: true, incluyeUnidad: false, incluyeEstadoBien: false }, // <-- Estado eliminado
+          filtros: { incluyeFecha: true, incluyeCategoria: true, incluyeUnidad: false, incluyeEstadoBien: false },
           filtrosUI: { fechaDesdePicker: null, fechaDesdeFormateada: null, menuFechaDesde: false, fechaHastaPicker: null, fechaHastaFormateada: null, menuFechaHasta: false, categoria_id: null, unidad_id: null, estado_bien: null }
         },
         {
           id: 'bienesPorSede',
           titulo: 'Bienes por Unidad Administrativa / Sede',
           descripcion: 'Detalle de bienes asignados a cada unidad o sede específica.',
-          filtros: { incluyeFecha: false, incluyeCategoria: false, incluyeUnidad: true, incluyeEstadoBien: true },
+          filtros: { incluyeFecha: true, incluyeCategoria: false, incluyeUnidad: true, incluyeEstadoBien: false },
           filtrosUI: { fechaDesdePicker: null, fechaDesdeFormateada: null, menuFechaDesde: false, fechaHastaPicker: null, fechaHastaFormateada: null, menuFechaHasta: false, categoria_id: null, unidad_id: null, estado_bien: null }
         },
         {
           id: 'depAcumulada',
           titulo: 'Reporte de Depreciación Acumulada',
           descripcion: 'Cálculo de la depreciación de los activos hasta una fecha determinada.',
-          filtros: { incluyeFecha: true, incluyeCategoria: true, incluyeUnidad: false, incluyeEstadoBien: false },
+          filtros: { incluyeFecha: true, incluyeCategoria: false, incluyeUnidad: false, incluyeEstadoBien: false },
           filtrosUI: { fechaDesdePicker: null, fechaDesdeFormateada: null, menuFechaDesde: false, fechaHastaPicker: null, fechaHastaFormateada: null, menuFechaHasta: false, categoria_id: null, unidad_id: null, estado_bien: null }
         },
          {
@@ -211,6 +211,13 @@ export default {
         fecha_desde: reporte.filtrosUI.fechaDesdePicker ? new Date(reporte.filtrosUI.fechaDesdePicker).toISOString().split('T')[0] : '',
         fecha_hasta: reporte.filtrosUI.fechaHastaPicker ? new Date(reporte.filtrosUI.fechaHastaPicker).toISOString().split('T')[0] : '',
       };
+      
+      // Validar fechas para reportes que las requieren
+      if (reporte.filtros.incluyeFecha && (!filtros.fecha_desde || !filtros.fecha_hasta)) {
+        this.$emit('show-snackbar', { message: 'Por favor, seleccione un rango de fechas para este reporte.', color: 'warning' });
+        return;
+      }
+      
       if (reporte.id === 'bienesPorCat') {
         if (!reporte.filtrosUI.categoria_id) {
           this.$emit('show-snackbar', { message: 'Por favor, seleccione una categoría para generar este reporte.', color: 'warning' });
@@ -220,6 +227,7 @@ export default {
         const categoria = this.listaCategorias.find(cat => cat.id === reporte.filtrosUI.categoria_id);
         if (categoria) filtros.categoria_nombre = categoria.nombre.replace(/\s+/g, '_');
       }
+      
       if (reporte.id === 'bienesPorSede') {
         if (!reporte.filtrosUI.unidad_id) {
           this.$emit('show-snackbar', { message: 'Por favor, seleccione una unidad para generar este reporte.', color: 'warning' });
@@ -227,25 +235,16 @@ export default {
         }
         filtros.unidad_id = reporte.filtrosUI.unidad_id;
       }
-      // --- NUEVO CASO PARA BIENES TRASLADADOS ---
+      
       if (reporte.id === 'bienesTrasl') {
-        if (!filtros.fecha_desde || !filtros.fecha_hasta) {
-          this.$emit('show-snackbar', { message: 'Por favor, seleccione un rango de fechas para este reporte.', color: 'warning' });
-          this.reporteEnProgreso = false;
-          return;
-        }
         if (reporte.filtrosUI.unidad_id) {
           filtros.unidad_id = reporte.filtrosUI.unidad_id;
         }
       }
-      // --- NUEVO CASO PARA DEPRECIACIÓN ACUMULADA ---
-      if (reporte.id === 'depAcumulada') {
-        filtros.fecha_hasta = filtros.fecha_hasta || new Date().toISOString().split('T')[0];
-        if (formato === 'PDF') await reporteStore.generarReporteDepreciacionPDF(filtros);
-        if (formato === 'Excel') await reporteStore.generarReporteDepreciacionExcel(filtros);
-      }
+      
       this.reporteEnProgreso = true;
       this.$emit('show-snackbar', { message: `Generando reporte en ${formato}, por favor espere...`, color: 'info' });
+      
       try {
         if (reporte.id === 'invGeneral' && formato === 'PDF') {
           await reporteStore.generarReporteInventarioGeneral(filtros);
@@ -260,18 +259,15 @@ export default {
         } else if (reporte.id === 'bienesPorSede' && formato === 'Excel') {
           await reporteStore.generarReportePorUnidadExcel(filtros);
         } else if (reporte.id === 'bienesDesinc') {
-          if (!filtros.fecha_desde || !filtros.fecha_hasta) {
-            this.$emit('show-snackbar', { message: 'Por favor, seleccione un rango de fechas (Desde y Hasta) para este reporte.', color: 'warning' });
-            this.reporteEnProgreso = false;
-            return;
-          }
           if (formato === 'PDF') await reporteStore.generarReporteDesincorporadosPDF(filtros);
           if (formato === 'Excel') await reporteStore.generarReporteDesincorporadosExcel(filtros);
         } else if (reporte.id === 'bienesTrasl') {
           if (formato === 'PDF') await reporteStore.generarReporteTrasladadosPDF(filtros);
           if (formato === 'Excel') await reporteStore.generarReporteTrasladadosExcel(filtros);
         } else if (reporte.id === 'depAcumulada') {
-          // Ya ejecutado arriba
+          filtros.fecha_hasta = filtros.fecha_hasta || new Date().toISOString().split('T')[0];
+          if (formato === 'PDF') await reporteStore.generarReporteDepreciacionPDF(filtros);
+          if (formato === 'Excel') await reporteStore.generarReporteDepreciacionExcel(filtros);
         } else {
           this.$emit('show-snackbar', {
             message: `Funcionalidad para generar "${reporte.titulo}" en ${formato} no implementada.`,

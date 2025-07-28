@@ -4,33 +4,83 @@
       <v-app-bar-nav-icon @click="drawer = !drawer"></v-app-bar-nav-icon>
       <v-toolbar-title>IPSFA - Gestión de Inventario</v-toolbar-title>
       <v-spacer></v-spacer>
-      <v-menu offset-y>
+      <v-menu offset-y min-width="280" rounded="lg">
         <template v-slot:activator="{ props }">
-          <v-btn icon v-bind="props">
-            <v-icon>mdi-account-circle</v-icon>
+          <v-btn 
+            icon 
+            v-bind="props"
+            class="user-menu-btn"
+            variant="text"
+          >
+            <v-avatar size="36" v-if="userProfileImage" class="elevation-2">
+              <v-img :src="userProfileImage" alt="Foto de Perfil">
+                <template v-slot:placeholder>
+                  <v-icon size="20" color="grey">mdi-account</v-icon>
+                </template>
+              </v-img>
+            </v-avatar>
+            <v-avatar size="36" v-else class="elevation-2">
+              <v-icon size="20" color="primary">mdi-account-circle</v-icon>
+            </v-avatar>
           </v-btn>
         </template>
-        <v-list dense>
-          <v-list-item>
-            <v-list-item-title>Usuario: {{ currentUser ? (currentUser.nombre_completo || currentUser.username) : '' }}</v-list-item-title>
-          </v-list-item>
-          <v-list-item>
-            <v-list-item-subtitle>Rol: {{ currentUser ? currentUser.rol : '' }}</v-list-item-subtitle>
-          </v-list-item>
-          <v-divider></v-divider>
-          <v-list-item to="/perfil" link>
-            <template v-slot:prepend>
-              <v-icon>mdi-account-edit-outline</v-icon>
-            </template>
-            <v-list-item-title>Mi Perfil</v-list-item-title>
-          </v-list-item>
-          <v-list-item @click="logout" link>
-            <template v-slot:prepend>
-              <v-icon>mdi-logout</v-icon>
-            </template>
-            <v-list-item-title>Cerrar Sesión</v-list-item-title>
-          </v-list-item>
-        </v-list>
+        
+        <v-card class="user-menu-card" elevation="8" rounded="lg">
+          <!-- Header del menú con información del usuario -->
+          <div class="user-menu-header pa-4">
+            <div class="d-flex align-center mb-3">
+              <v-avatar size="48" class="mr-3 elevation-3">
+                <v-img :src="userProfileImage" v-if="userProfileImage" alt="Foto de Perfil">
+                  <template v-slot:placeholder>
+                    <v-icon size="24" color="grey">mdi-account</v-icon>
+                  </template>
+                </v-img>
+                <v-icon v-else size="24" color="primary">mdi-account-circle</v-icon>
+              </v-avatar>
+              <div class="flex-grow-1">
+                <h6 class="text-h6 font-weight-bold mb-1">
+                  {{ currentUser ? (currentUser.nombre_completo || currentUser.username) : 'Usuario' }}
+                </h6>
+                <p class="text-body-2 text-grey-darken-1 mb-1">
+                  @{{ currentUser ? currentUser.username : '' }}
+                </p>
+                <v-chip 
+                  :color="getRoleColor(currentUser ? currentUser.rol : '')" 
+                  size="small" 
+                  variant="flat"
+                  class="font-weight-medium"
+                >
+                  <v-icon size="14" class="mr-1">mdi-shield</v-icon>
+                  {{ currentUser ? currentUser.rol : 'Usuario' }}
+                </v-chip>
+              </div>
+            </div>
+            <v-divider></v-divider>
+          </div>
+
+          <!-- Opciones del menú -->
+          <v-list class="pa-0" density="compact">
+            <v-list-item 
+              to="/perfil" 
+              link 
+              class="user-menu-item"
+              prepend-icon="mdi-account-edit-outline"
+            >
+              <v-list-item-title class="font-weight-medium">Mi Perfil</v-list-item-title>
+              <v-list-item-subtitle class="text-caption">Gestionar información personal</v-list-item-subtitle>
+            </v-list-item>
+
+            <v-list-item 
+              @click="logout" 
+              link 
+              class="user-menu-item"
+              prepend-icon="mdi-logout"
+            >
+              <v-list-item-title class="font-weight-medium">Cerrar Sesión</v-list-item-title>
+              <v-list-item-subtitle class="text-caption">Salir de la aplicación</v-list-item-subtitle>
+            </v-list-item>
+          </v-list>
+        </v-card>
       </v-menu>
     </v-app-bar>
 
@@ -145,6 +195,13 @@ export default {
       const authStore = useAuthStore();
       return authStore.getCurrentUser;
     },
+    userProfileImage() {
+      const user = this.currentUser;
+      if (user && user.perfil && user.perfil.foto_perfil) {
+        return `http://127.0.0.1:8000${user.perfil.foto_perfil}`;
+      }
+      return null;
+    },
     breadcrumbItems() {
       const matchedRoutes = this.$route.matched;
       const breadcrumbs = [];
@@ -201,12 +258,29 @@ export default {
       this.snackbar.timeout = payload.timeout || 3000;
       this.snackbar.visible = true;
     },
+    getRoleColor(role) {
+      const roleColors = {
+        'Administrador': 'error',
+        'Auditor': 'warning',
+        'Consultor': 'info',
+        'Usuario': 'info',
+        'Supervisor': 'success',
+        'default': 'grey'
+      };
+      return roleColors[role] || roleColors.default;
+    },
   },
   watch: {
     isAuthenticated(val) {
       if (!val) {
         this.$router.push('/login');
       }
+    },
+    currentUser: {
+      handler(newUser) {
+        // El usuario se actualizó, la interfaz se actualizará automáticamente
+      },
+      deep: true
     }
   },
   mounted() {
@@ -223,5 +297,80 @@ export default {
 </script>
 
 <style>
-/* Estilos globales muy básicos si los necesitas, por ahora vacío */
+/* Estilos para el mini menú del usuario */
+.user-menu-btn {
+  transition: all 0.2s ease;
+}
+
+.user-menu-btn:hover {
+  transform: scale(1.05);
+}
+
+.user-menu-card {
+  border-radius: 16px !important;
+  overflow: hidden;
+}
+
+.user-menu-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.user-menu-item {
+  transition: all 0.2s ease;
+  border-radius: 8px;
+  margin: 2px 8px;
+}
+
+.user-menu-item:hover {
+  background-color: rgba(var(--v-theme-primary), 0.1) !important;
+  transform: translateX(4px);
+}
+
+.user-menu-item .v-list-item-title {
+  font-weight: 500;
+  color: rgba(var(--v-theme-on-surface), 0.87);
+}
+
+.user-menu-item .v-list-item-subtitle {
+  color: rgba(var(--v-theme-on-surface), 0.6);
+  font-size: 0.75rem;
+}
+
+/* Animación de entrada para el menú */
+.v-menu__content {
+  animation: slideInDown 0.3s ease-out;
+}
+
+@keyframes slideInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Estilos para el chip del rol */
+.v-chip {
+  font-weight: 500;
+  letter-spacing: 0.5px;
+}
+
+/* Responsive design para el menú */
+@media (max-width: 600px) {
+  .user-menu-card {
+    min-width: 260px;
+  }
+  
+  .user-menu-header {
+    padding: 16px !important;
+  }
+  
+  .user-menu-item {
+    margin: 1px 4px;
+  }
+}
 </style>

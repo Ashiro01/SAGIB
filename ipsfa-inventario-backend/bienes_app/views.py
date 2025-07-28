@@ -13,7 +13,14 @@ from django.shortcuts import get_object_or_404
 import qrcode
 from io import BytesIO
 from decimal import Decimal
-from .pdf_generator import generar_reporte_inventario_pdf, generar_reporte_desincorporados_pdf, generar_reporte_traslados_pdf, generar_reporte_depreciacion_pdf
+from .pdf_generator import (
+    generar_reporte_inventario_pdf, 
+    generar_reporte_desincorporados_pdf, 
+    generar_reporte_traslados_pdf, 
+    generar_reporte_depreciacion_pdf,
+    generar_reporte_por_categoria_pdf,
+    generar_reporte_por_unidad_pdf
+)
 from .excel_generator import generar_reporte_inventario_excel, generar_reporte_desincorporados_excel, generar_reporte_traslados_excel, generar_reporte_depreciacion_excel
 from datetime import date
 from dateutil.relativedelta import relativedelta
@@ -430,8 +437,8 @@ class ReporteBienesPorCategoriaPDF(APIView):
             fecha_desde = request.query_params.get('fecha_desde', 'N/A')
             fecha_hasta = request.query_params.get('fecha_hasta', 'N/A')
 
-            # Llamar a la función que genera el PDF con los datos filtrados
-            buffer = generar_reporte_inventario_pdf(bienes, fecha_desde, fecha_hasta, titulo)
+            # Llamar a la función específica para categorías
+            buffer = generar_reporte_por_categoria_pdf(bienes, categoria.nombre, fecha_desde, fecha_hasta, titulo)
 
             response = HttpResponse(buffer, content_type='application/pdf')
             response['Content-Disposition'] = f'attachment; filename="reporte_bienes_categoria_{categoria.nombre}.pdf"'
@@ -480,7 +487,10 @@ class ReporteBienesPorUnidadPDF(APIView):
             titulo = f"INVENTARIO DE BIENES - UNIDAD: {unidad.nombre.upper()}"
             fecha_desde = request.query_params.get('fecha_desde', 'N/A')
             fecha_hasta = request.query_params.get('fecha_hasta', 'N/A')
-            buffer = generar_reporte_inventario_pdf(bienes, fecha_desde, fecha_hasta, titulo)
+            
+            # Llamar a la función específica para unidades
+            buffer = generar_reporte_por_unidad_pdf(bienes, unidad.nombre, fecha_desde, fecha_hasta, titulo)
+            
             response = HttpResponse(buffer, content_type='application/pdf')
             response['Content-Disposition'] = f'attachment; filename="reporte_bienes_unidad_{unidad.nombre}.pdf"'
             return response

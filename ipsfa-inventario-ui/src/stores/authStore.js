@@ -10,6 +10,10 @@ export const useAuthStore = defineStore('auth', {
     usuario: null,
     accessToken: localStorage.getItem('accessToken') || null,
     refreshToken: localStorage.getItem('refreshToken') || null,
+    preguntasSeguridadDisponibles: [], // NUEVO: Para la lista de todas las preguntas
+    respuestasSeguridadUsuario: [],   // NUEVO: Para las respuestas del usuario logueado
+    loading: false,
+    error: null,
   }),
 
   // GETTERS: Son como las propiedades computadas para los stores.
@@ -19,11 +23,119 @@ export const useAuthStore = defineStore('auth', {
     getCurrentUser: (state) => state.usuario,
     getUserRole: (state) => state.usuario ? state.usuario.rol : null,
     getToken: (state) => state.accessToken,
+    getPreguntasDisponibles: (state) => state.preguntasSeguridadDisponibles,
+    getRespuestasUsuario: (state) => state.respuestasSeguridadUsuario,
   },
 
   // ACTIONS: Son como los métodos en los componentes.
   // Se usan para modificar el estado (mutaciones) o realizar operaciones asíncronas.
   actions: {
+    // --- NUEVAS ACCIONES PARA RESTABLECER CONTRASEÑA ---
+    async getSecurityQuestionsForUser(username) {
+        this.loading = true;
+        this.error = null;
+        try {
+            const apiClient = (await import('@/services/api')).default;
+            const response = await apiClient.post('/password-reset/get-questions/', { username });
+            return response.data;
+        } catch (err) {
+            this.error = err.response?.data?.error || 'Error al obtener preguntas de seguridad.';
+            throw err;
+        } finally {
+            this.loading = false;
+        }
+    },
+
+    async verifySecurityAnswers(payload) { // payload: { username, respuestas }
+        this.loading = true;
+        this.error = null;
+        try {
+            const apiClient = (await import('@/services/api')).default;
+            const response = await apiClient.post('/password-reset/verify-answers/', payload);
+            return response.data;
+        } catch (err) {
+            this.error = err.response?.data?.error || 'Error al verificar respuestas.';
+            throw err;
+        } finally {
+            this.loading = false;
+        }
+    },
+
+    async resetPasswordWithToken(payload) { // payload: { reset_token, new_password, new_password_confirm }
+        this.loading = true;
+        this.error = null;
+        try {
+            const apiClient = (await import('@/services/api')).default;
+            const response = await apiClient.post('/password-reset/set-new-password/', payload);
+            return response.data;
+        } catch (err) {
+            this.error = err.response?.data?.error || 'Error al restablecer la contraseña.';
+            throw err;
+        } finally {
+            this.loading = false;
+        }
+    },
+    // --- NUEVAS ACCIONES PARA PREGUNTAS DE SEGURIDAD ---
+    async fetchSecurityQuestions() {
+      try {
+        const apiClient = (await import('@/services/api')).default;
+        const response = await apiClient.get('/preguntas-seguridad/');
+        this.preguntasSeguridadDisponibles = response.data.results || response.data;
+      } catch (err) {
+        console.error('Error en fetchSecurityQuestions:', err);
+      }
+    },
+
+    async fetchUserSecurityAnswers() {
+      try {
+        const apiClient = (await import('@/services/api')).default;
+        const response = await apiClient.get('/mis-respuestas/');
+        this.respuestasSeguridadUsuario = response.data.results || response.data;
+      } catch (err) {
+        console.error('Error en fetchUserSecurityAnswers:', err);
+      }
+    },
+
+    async saveUserSecurityAnswer(payload) { // payload: { pregunta, respuesta_plana, id (opcional) }
+      this.loading = true;
+      this.error = null;
+      try {
+        const apiClient = (await import('@/services/api')).default;
+        let response;
+        if (payload.id) {
+          response = await apiClient.put(`/mis-respuestas/${payload.id}/`, payload);
+        } else {
+          response = await apiClient.post('/mis-respuestas/', payload);
+        }
+        await this.fetchUserSecurityAnswers();
+        return response.data;
+      } catch (err) {
+        const errorMessage = err.response?.data ? this.formatApiErrors ? this.formatApiErrors(err.response.data) : 'Error al guardar la respuesta.' : 'Error al guardar la respuesta.';
+        this.error = errorMessage;
+        console.error('Error en saveUserSecurityAnswer:', err);
+        throw new Error(errorMessage);
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    async deleteUserSecurityAnswer(answerId) {
+      this.loading = true;
+      this.error = null;
+      try {
+        const apiClient = (await import('@/services/api')).default;
+        await apiClient.delete(`/mis-respuestas/${answerId}/`);
+        await this.fetchUserSecurityAnswers();
+        return { success: true };
+      } catch (err) {
+        const errorMessage = 'Error al eliminar la respuesta.';
+        this.error = errorMessage;
+        console.error('Error en deleteUserSecurityAnswer:', err);
+        throw new Error(errorMessage);
+      } finally {
+        this.loading = false;
+      }
+    },
     // Acción para simular el inicio de sesión
     async login(credenciales) {
       try {
@@ -60,6 +172,15 @@ export const useAuthStore = defineStore('auth', {
       }
     },
 
+    // Utilidad para formatear errores de la API (puedes mejorarla según tu backend)
+    formatApiErrors(apiErrors) {
+      if (typeof apiErrors === 'string') return apiErrors;
+      if (typeof apiErrors === 'object') {
+        return Object.values(apiErrors).flat().join(' ');
+      }
+      return 'Error desconocido.';
+    },
+
     // NUEVA ACCIÓN para actualizar datos del perfil y foto
     async updateUserProfile(userData) {
       this.loading = true;
@@ -89,7 +210,6 @@ export const useAuthStore = defineStore('auth', {
           headers: { 'Authorization': `Bearer ${this.accessToken}` }
         });
         this.usuario = userResp.data;
-        console.log('Perfil de usuario actualizado:', userResp.data);
         return userResp.data;
       } catch (err) {
         const errorMessage = err.response?.data ? this.formatApiErrors(err.response.data) : 'Error al actualizar el perfil.';

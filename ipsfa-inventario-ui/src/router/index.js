@@ -1,3 +1,5 @@
+import RestablecerPasswordView from '../views/RestablecerPasswordView.vue';
+
 import { createRouter, createWebHistory } from 'vue-router'
 import BienDetailView from '../views/BienDetailView.vue'
 import PerfilView from '../views/PerfilView.vue';
@@ -23,6 +25,12 @@ import AuditLogView from '../views/AuditLogView.vue';
 import CalcularDepreciacionView from '../views/CalcularDepreciacionView.vue';
 
 const routes = [
+  {
+    path: '/restablecer-password',
+    name: 'restablecerPassword',
+    component: RestablecerPasswordView,
+    meta: { breadcrumb: 'Restablecer Contraseña' }
+  },
   {
     path: '/perfil',
     name: 'perfil',

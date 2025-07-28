@@ -11,11 +11,29 @@ class PerfilUsuarioSerializer(serializers.ModelSerializer):
 class UserDetailSerializer(serializers.ModelSerializer):
     """Serializer para los detalles del usuario que él mismo puede editar."""
     perfil = PerfilUsuarioSerializer(required=False)
+    rol = serializers.SerializerMethodField()
+    nombre_completo = serializers.SerializerMethodField()
 
     class Meta:
         model = User
-        fields = ['id', 'username', 'first_name', 'last_name', 'email', 'perfil']
+        fields = ['id', 'username', 'first_name', 'last_name', 'email', 'perfil', 'rol', 'nombre_completo']
         read_only_fields = ['username'] # El username no se puede cambiar
+
+    def get_rol(self, obj):
+        """Obtiene el rol principal del usuario (primer grupo)"""
+        if obj.groups.exists():
+            return obj.groups.first().name
+        return 'Usuario'
+
+    def get_nombre_completo(self, obj):
+        """Obtiene el nombre completo del usuario"""
+        if obj.first_name and obj.last_name:
+            return f"{obj.first_name} {obj.last_name}"
+        elif obj.first_name:
+            return obj.first_name
+        elif obj.last_name:
+            return obj.last_name
+        return obj.username
 
     def update(self, instance, validated_data):
         perfil_data = validated_data.pop('perfil', {})
