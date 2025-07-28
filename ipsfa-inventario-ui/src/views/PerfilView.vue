@@ -225,6 +225,7 @@
           </v-card-actions>
         </v-card>
 
+<<<<<<< HEAD
         <!-- Tarjeta de preguntas de seguridad -->
         <v-card elevation="2" rounded="lg">
           <v-card-title class="d-flex align-center pa-6 pb-4">
@@ -281,6 +282,38 @@
                 <v-icon size="20" class="mr-2">mdi-plus-circle</v-icon>
                 Añadir Nueva Pregunta
               </h6>
+=======
+    <v-row>
+      <v-col cols="12">
+        <v-card class="mt-6">
+          <v-card-title>Preguntas de Seguridad</v-card-title>
+          <v-card-subtitle>Añada hasta 3 preguntas para recuperar su cuenta.</v-card-subtitle>
+          <v-card-text>
+            <v-list v-if="respuestasUsuario.length > 0" lines="two">
+              <v-list-item
+                v-for="respuesta in respuestasUsuario"
+                :key="respuesta.id"
+                :title="respuesta.pregunta_texto"
+                subtitle="Respuesta registrada (oculta por seguridad)"
+              >
+                <template v-slot:append>
+                  <v-btn
+                    color="error"
+                    icon="mdi-delete-outline"
+                    variant="text"
+                    @click="eliminarRespuesta(respuesta.id)"
+                    :loading="isSubmitting"
+                  ></v-btn>
+                </template>
+              </v-list-item>
+            </v-list>
+            <p v-else class="text-grey">Aún no ha añadido ninguna pregunta de seguridad.</p>
+
+            <v-divider class="my-4" v-if="respuestasUsuario.length > 0 && respuestasUsuario.length < 3"></v-divider>
+
+            <div v-if="respuestasUsuario.length < 3">
+              <h4 class="text-h6 mt-4 mb-2">Añadir Nueva Pregunta</h4>
+>>>>>>> 8fa146e0b4882641682ef1184d6a54b651e56746
               <v-form ref="formRespuesta" v-model="formRespuestaValido">
                 <v-select
                   v-model="nuevaRespuesta.pregunta"
@@ -291,6 +324,7 @@
                   :rules="[rules.required]"
                   outlined
                   dense
+<<<<<<< HEAD
                   prepend-inner-icon="mdi-help-circle"
                   no-data-text="No hay más preguntas disponibles"
                   class="mb-4"
@@ -323,6 +357,29 @@
             <div v-else class="text-center py-4">
               <v-icon size="32" color="success" class="mb-2">mdi-shield-check</v-icon>
               <p class="text-success font-weight-medium">Ya tiene configuradas las 3 preguntas de seguridad.</p>
+=======
+                  no-data-text="No hay más preguntas disponibles"
+                ></v-select>
+                <v-text-field
+                  v-model="nuevaRespuesta.respuesta_plana"
+                  label="Su respuesta (sensible a mayúsculas/minúsculas)"
+                  :rules="[rules.required]"
+                  outlined
+                  dense
+                ></v-text-field>
+              </v-form>
+              <v-card-actions>
+                <v-spacer></v-spacer>
+                <v-btn
+                  color="primary"
+                  @click="guardarRespuesta"
+                  :loading="isSubmitting"
+                  :disabled="!formRespuestaValido"
+                >
+                  Guardar Pregunta
+                </v-btn>
+              </v-card-actions>
+>>>>>>> 8fa146e0b4882641682ef1184d6a54b651e56746
             </div>
           </v-card-text>
         </v-card>
@@ -485,7 +542,11 @@ export default {
       try {
         const payload = { ...this.perfilData, foto_perfil: this.fotoSeleccionada };
         await this.updateUserProfile(payload);
+<<<<<<< HEAD
         this.$emit('show-snackbar', { message: 'Foto de perfil actualizada exitosamente.', color: 'success' });
+=======
+        this.$emit('show-snackbar', { message: 'Foto de perfil actualizada.', color: 'success' });
+>>>>>>> 8fa146e0b4882641682ef1184d6a54b651e56746
         this.fotoSeleccionada = null;
         this.setUsuarioFromStore();
       } catch (error) {
