@@ -85,7 +85,7 @@
                   v-model="desincorporacion.fecha_movimiento_picker"
                   no-title
                   @update:model-value="actualizarFechaDesincorporacion"
-                  locale="es-ES"
+                  locale="es-VE"
                 ></v-date-picker>
               </v-menu>
             </v-col>
@@ -149,7 +149,7 @@ export default {
     desincorporacion: {
       tipo_movimiento: 'DESINCORPORACION',
       fecha_movimiento_picker: new Date(),
-      fecha_movimiento_formateada: new Date().toLocaleDateString('es-ES', { year: 'numeric', month: '2-digit', day: '2-digit'}),
+      fecha_movimiento_formateada: new Date().toLocaleDateString('es-VE', { year: 'numeric', month: '2-digit', day: '2-digit'}),
       motivo_desincorporacion: null,
       numero_oficio_referencia: '',
       observaciones_movimiento: '',
@@ -208,7 +208,7 @@ export default {
     actualizarFechaDesincorporacion() {
       if (this.desincorporacion.fecha_movimiento_picker) {
         const d = new Date(this.desincorporacion.fecha_movimiento_picker);
-        this.desincorporacion.fecha_movimiento_formateada = d.toLocaleDateString('es-ES', {
+        this.desincorporacion.fecha_movimiento_formateada = d.toLocaleDateString('es-VE', {
           year: 'numeric', month: '2-digit', day: '2-digit'
         });
       } else {
@@ -270,7 +270,7 @@ export default {
       this.desincorporacion = {
         tipo_movimiento: 'DESINCORPORACION',
         fecha_movimiento_picker: new Date(),
-        fecha_movimiento_formateada: new Date().toLocaleDateString('es-ES', { year: 'numeric', month: '2-digit', day: '2-digit'}),
+        fecha_movimiento_formateada: new Date().toLocaleDateString('es-VE', { year: 'numeric', month: '2-digit', day: '2-digit'}),
         motivo_desincorporacion: null,
         numero_oficio_referencia: '',
         observaciones_movimiento: '',

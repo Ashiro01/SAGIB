@@ -87,14 +87,19 @@ def generar_reporte_inventario_excel(bienes_queryset, titulo_reporte):
     cell.value = f"Total de Bienes: {bienes_queryset.count()} | Fecha de Generación: {timezone.now().strftime('%d/%m/%Y %H:%M')}"
     cell.alignment = Alignment(horizontal='center', vertical='center')
     cell.font = Font(bold=True, size=11)
+    
+    # --- Color azul en la fila de información ---
+    info_fill = PatternFill(start_color='003366', end_color='003366', fill_type='solid')
+    for col in range(1, 12):  # Columnas A-K
+        cell = sheet.cell(row=13, column=col)
+        cell.fill = info_fill
+        cell.font = Font(bold=True, color='FFFFFF')
 
-    # --- Color azul en encabezado de la tabla ---
-    header_fill = PatternFill(start_color='003366', end_color='003366', fill_type='solid')
-    header_row = 14  # Porque la tabla inicia en startrow=12 (fila 13 en Excel)
+    # --- Encabezado de tabla sin color ---
+    header_row = 15  # Corregido: la tabla inicia en startrow=12 (fila 13 en Excel), encabezado en fila 15
     for col in range(1, len(df.columns) + 1):
         cell = sheet.cell(row=header_row, column=col)
-        cell.fill = header_fill
-        cell.font = Font(bold=True, color='FFFFFF')
+        cell.font = Font()  # Sin negrilla
 
     # --- Pie de página (Firma) ---
     last_row = sheet.max_row + 4
@@ -117,7 +122,7 @@ def generar_reporte_inventario_excel(bienes_queryset, titulo_reporte):
     cell.font = Font(bold=True)
 
     # Centrar el contenido de todas las filas de datos
-    data_start_row = 15  # Porque el DataFrame se escribe en startrow=12 (fila 13 en Excel, 1-indexed)
+    data_start_row = 13  # Centrar desde la fila 13
     data_end_row = sheet.max_row
     for row in sheet.iter_rows(min_row=data_start_row, max_row=data_end_row):
         for cell in row:
@@ -145,7 +150,7 @@ def generar_reporte_desincorporados_excel(movimientos_queryset, titulo_reporte, 
     df = pd.DataFrame(datos_para_df)
     buffer = BytesIO()
     with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
-        df.to_excel(writer, sheet_name='Desincorporados', index=False, startrow=14)
+        df.to_excel(writer, sheet_name='Desincorporados', index=False, startrow=12)
         worksheet = writer.sheets['Desincorporados']
         col_widths = [7, 22, 35, 28, 18, 18, 18]
         for i, col in enumerate(df.columns):
@@ -180,27 +185,33 @@ def generar_reporte_desincorporados_excel(movimientos_queryset, titulo_reporte, 
     cell.value = titulo_reporte
     cell.alignment = Alignment(horizontal='center', vertical='center')
     cell.font = Font(bold=True, size=14)
-    # --- Rango de Fechas ---
-    rango_fechas = None
+    # --- Información del reporte ---
+    info_text = f"Total de Bienes: {movimientos_queryset.count()} | Fecha de Generación: {timezone.now().strftime('%d/%m/%Y %H:%M')}"
     if fecha_desde and fecha_hasta:
-        rango_fechas = f"Desde: {fecha_desde}   Hasta: {fecha_hasta}"
+        info_text += f" | Período: Desde {fecha_desde} Hasta {fecha_hasta}"
     elif fecha_desde:
-        rango_fechas = f"Desde: {fecha_desde}"
+        info_text += f" | Desde: {fecha_desde}"
     elif fecha_hasta:
-        rango_fechas = f"Hasta: {fecha_hasta}"
-    if rango_fechas:
-        sheet.merge_cells('A12:H12')
-        cell = sheet['A12']
-        cell.value = rango_fechas
-        cell.alignment = Alignment(horizontal='center', vertical='center')
-        cell.font = Font(bold=True, size=11)
-    # --- Color azul claro en encabezado de la tabla ---
-    header_fill = PatternFill(start_color='B7D6F8', end_color='B7D6F8', fill_type='solid')
+        info_text += f" | Hasta: {fecha_hasta}"
+    
+    sheet.merge_cells('A12:H12')
+    cell = sheet['A12']
+    cell.value = info_text
+    cell.alignment = Alignment(horizontal='center', vertical='center')
+    cell.font = Font(bold=True, size=11)
+    
+    # --- Color azul claro en la fila de información ---
+    info_fill = PatternFill(start_color='B7D6F8', end_color='B7D6F8', fill_type='solid')
+    for col in range(1, 9):  # Columnas A-H
+        cell = sheet.cell(row=13, column=col)
+        cell.fill = info_fill
+        cell.font = Font(bold=True)
+
+    # --- Encabezado de tabla sin color ---
     header_row = 15  # Porque la tabla inicia en startrow=14 (fila 15 en Excel)
     for col in range(1, len(df.columns) + 1):
         cell = sheet.cell(row=header_row, column=col)
-        cell.fill = header_fill
-        cell.font = Font(bold=True)
+        cell.font = Font()  # Sin negrilla
     # --- Pie de página (Firma) ---
     last_row = sheet.max_row + 4
     sheet.merge_cells(f'A{last_row}:H{last_row}')
@@ -218,7 +229,7 @@ def generar_reporte_desincorporados_excel(movimientos_queryset, titulo_reporte, 
     cell.alignment = Alignment(horizontal='center')
     cell.font = Font(bold=True)
     # Centrar el contenido de todas las filas de datos
-    data_start_row = 16
+    data_start_row = 13  # Centrar desde la fila 13
     data_end_row = sheet.max_row
     for row in sheet.iter_rows(min_row=data_start_row, max_row=data_end_row):
         for cell in row:
@@ -244,7 +255,7 @@ def generar_reporte_traslados_excel(movimientos_queryset, titulo_reporte, fecha_
     df = pd.DataFrame(datos_para_df)
     buffer = BytesIO()
     with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
-        df.to_excel(writer, sheet_name='Traslados', index=False, startrow=14)
+        df.to_excel(writer, sheet_name='Traslados', index=False, startrow=12)
         worksheet = writer.sheets['Traslados']
         col_widths = [7, 22, 22, 35, 28, 28, 28]
         for i, col in enumerate(df.columns):
@@ -283,29 +294,33 @@ def generar_reporte_traslados_excel(movimientos_queryset, titulo_reporte, fecha_
     cell.alignment = Alignment(horizontal='center', vertical='center')
     cell.font = Font(bold=True, size=14)
 
-    # --- Rango de Fechas ---
-    rango_fechas = None
+    # --- Información del reporte ---
+    info_text = f"Total de Bienes: {movimientos_queryset.count()} | Fecha de Generación: {timezone.now().strftime('%d/%m/%Y %H:%M')}"
     if fecha_desde and fecha_hasta:
-        rango_fechas = f"Desde: {fecha_desde}   Hasta: {fecha_hasta}"
+        info_text += f" | Período: Desde {fecha_desde} Hasta {fecha_hasta}"
     elif fecha_desde:
-        rango_fechas = f"Desde: {fecha_desde}"
+        info_text += f" | Desde: {fecha_desde}"
     elif fecha_hasta:
-        rango_fechas = f"Hasta: {fecha_hasta}"
+        info_text += f" | Hasta: {fecha_hasta}"
+    
+    sheet.merge_cells('A12:H12')
+    cell = sheet['A12']
+    cell.value = info_text
+    cell.alignment = Alignment(horizontal='center', vertical='center')
+    cell.font = Font(bold=True, size=11)
 
-    if rango_fechas:
-        sheet.merge_cells('A12:H12')
-        cell = sheet['A12']
-        cell.value = rango_fechas
-        cell.alignment = Alignment(horizontal='center', vertical='center')
-        cell.font = Font(bold=True, size=11)
+    # --- Color azul claro en la fila de información ---
+    info_fill = PatternFill(start_color='B7D6F8', end_color='B7D6F8', fill_type='solid')
+    for col in range(1, 9):  # Columnas A-H
+        cell = sheet.cell(row=13, column=col)
+        cell.fill = info_fill
+        cell.font = Font(bold=True)
 
-    # --- Color azul claro en encabezado de la tabla ---
-    header_fill = PatternFill(start_color='B7D6F8', end_color='B7D6F8', fill_type='solid')
+    # --- Encabezado de tabla sin color ---
     header_row = 15  # Porque la tabla inicia en startrow=14 (fila 15 en Excel)
     for col in range(1, len(df.columns) + 1):
         cell = sheet.cell(row=header_row, column=col)
-        cell.fill = header_fill
-        cell.font = Font(bold=True)
+        cell.font = Font()  # Sin negrilla
     
     # --- Pie de página (Firma) ---
     last_row = sheet.max_row + 4
@@ -327,7 +342,7 @@ def generar_reporte_traslados_excel(movimientos_queryset, titulo_reporte, fecha_
     cell.font = Font(bold=True)
     
     # Centrar el contenido de todas las filas de datos
-    data_start_row = 16
+    data_start_row = 13  # Centrar desde la fila 13
     data_end_row = sheet.max_row
     for row in sheet.iter_rows(min_row=data_start_row, max_row=data_end_row):
         for cell in row:
@@ -410,14 +425,19 @@ def generar_reporte_depreciacion_excel(bienes_con_depreciacion, titulo_reporte):
     cell.value = f"Total de Bienes: {bienes_con_depreciacion.count()} | Fecha de Generación: {timezone.now().strftime('%d/%m/%Y %H:%M')}"
     cell.alignment = Alignment(horizontal='center', vertical='center')
     cell.font = Font(bold=True, size=11)
+    
+    # --- Color azul en la fila de información ---
+    info_fill = PatternFill(start_color='4169E1', end_color='4169E1', fill_type='solid')
+    for col in range(1, 9):  # Columnas A-H
+        cell = sheet.cell(row=13, column=col)
+        cell.fill = info_fill
+        cell.font = Font(bold=True, color='FFFFFF')
 
-    # --- Color azul en encabezado de la tabla ---
-    header_fill = PatternFill(start_color='4169E1', end_color='4169E1', fill_type='solid')
-    header_row = 14
+    # --- Encabezado de tabla sin color ---
+    header_row = 15
     for col in range(1, len(df.columns) + 1):
         cell = sheet.cell(row=header_row, column=col)
-        cell.fill = header_fill
-        cell.font = Font(bold=True, color='FFFFFF')
+        cell.font = Font()  # Sin negrilla
 
     # --- Pie de página (Firma) ---
     last_row = sheet.max_row + 4
@@ -439,7 +459,7 @@ def generar_reporte_depreciacion_excel(bienes_con_depreciacion, titulo_reporte):
     cell.font = Font(bold=True)
 
     # Centrar el contenido de todas las filas de datos
-    data_start_row = 15
+    data_start_row = 16
     data_end_row = sheet.max_row
     for row in sheet.iter_rows(min_row=data_start_row, max_row=data_end_row):
         for cell in row:

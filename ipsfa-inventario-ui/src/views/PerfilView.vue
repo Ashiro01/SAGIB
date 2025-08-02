@@ -42,20 +42,20 @@
                     <v-icon size="60" color="grey">mdi-account</v-icon>
                   </template>
                 </v-img>
-              </v-avatar>
+            </v-avatar>
               
-              <v-file-input
-                v-model="fotoSeleccionada"
-                label="Seleccionar nueva foto"
+            <v-file-input
+              v-model="fotoSeleccionada"
+              label="Seleccionar nueva foto"
                 accept="image/png, image/jpeg, image/jpg"
                 prepend-icon="mdi-camera-plus"
-                outlined
-                dense
+              outlined
+              dense
                 hide-details
                 class="mb-4"
-                @change="previsualizarFoto"
+              @change="previsualizarFoto"
                 :rules="[rules.imageFile]"
-              ></v-file-input>
+            ></v-file-input>
               
               <v-btn 
                 color="primary" 
@@ -93,13 +93,13 @@
             <v-form ref="formDatos" v-model="formDatosValido">
               <v-row>
                 <v-col cols="12" md="6">
-                  <v-text-field
-                    v-model="perfilData.username"
-                    label="Nombre de Usuario"
-                    readonly
-                    disabled
-                    outlined
-                    dense
+              <v-text-field
+                v-model="perfilData.username"
+                label="Nombre de Usuario"
+                readonly
+                disabled
+                outlined
+                dense
                     prepend-inner-icon="mdi-account"
                     class="mb-4"
                   ></v-text-field>
@@ -115,31 +115,31 @@
                     :readonly="!editandoDatos"
                     prepend-inner-icon="mdi-email"
                     class="mb-4"
-                  ></v-text-field>
+              ></v-text-field>
                 </v-col>
                 <v-col cols="12" md="6">
-                  <v-text-field
-                    v-model="perfilData.first_name"
-                    label="Nombre(s)"
-                    :rules="[rules.required]"
-                    outlined
-                    dense
-                    :readonly="!editandoDatos"
+              <v-text-field
+                v-model="perfilData.first_name"
+                label="Nombre(s)"
+                :rules="[rules.required]"
+                outlined
+                dense
+                :readonly="!editandoDatos"
                     prepend-inner-icon="mdi-account"
                     class="mb-4"
-                  ></v-text-field>
+              ></v-text-field>
                 </v-col>
                 <v-col cols="12" md="6">
-                  <v-text-field
-                    v-model="perfilData.last_name"
-                    label="Apellido(s)"
-                    :rules="[rules.required]"
-                    outlined
-                    dense
-                    :readonly="!editandoDatos"
+              <v-text-field
+                v-model="perfilData.last_name"
+                label="Apellido(s)"
+                :rules="[rules.required]"
+                outlined
+                dense
+                :readonly="!editandoDatos"
                     prepend-inner-icon="mdi-account"
                     class="mb-4"
-                  ></v-text-field>
+              ></v-text-field>
                 </v-col>
               </v-row>
             </v-form>
@@ -240,9 +240,9 @@
             <div v-if="respuestasUsuario.length > 0" class="mb-6">
               <h6 class="text-h6 mb-3 text-grey-darken-1">Preguntas Configuradas</h6>
               <v-list lines="two" class="bg-grey-lighten-5 rounded-lg">
-                <v-list-item
-                  v-for="respuesta in respuestasUsuario"
-                  :key="respuesta.id"
+              <v-list-item
+                v-for="respuesta in respuestasUsuario"
+                :key="respuesta.id"
                   class="mb-2"
                 >
                   <template v-slot:prepend>
@@ -254,18 +254,18 @@
                   <v-list-item-subtitle class="text-grey-darken-1">
                     Respuesta registrada (oculta por seguridad)
                   </v-list-item-subtitle>
-                  <template v-slot:append>
-                    <v-btn
-                      color="error"
-                      icon="mdi-delete-outline"
-                      variant="text"
-                      @click="eliminarRespuesta(respuesta.id)"
-                      :loading="isSubmitting"
+                <template v-slot:append>
+                  <v-btn
+                    color="error"
+                    icon="mdi-delete-outline"
+                    variant="text"
+                    @click="eliminarRespuesta(respuesta.id)"
+                    :loading="isSubmitting"
                       size="small"
-                    ></v-btn>
-                  </template>
-                </v-list-item>
-              </v-list>
+                  ></v-btn>
+                </template>
+              </v-list-item>
+            </v-list>
             </div>
 
             <!-- Mensaje cuando no hay preguntas -->

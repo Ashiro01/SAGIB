@@ -5,6 +5,9 @@ import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
 import '@mdi/font/css/materialdesignicons.css';
 
+// Configuración de localización en español de Venezuela
+import { es } from 'vuetify/locale'
+
 // Paleta de colores sugerida (puedes ajustarla)
 const ipsfaTheme = {
   dark: false, // Puedes experimentar con un tema oscuro si lo deseas (true/false)
@@ -26,6 +29,11 @@ const ipsfaTheme = {
 export default createVuetify({
   components,
   directives,
+  locale: {
+    locale: 'es-VE',
+    fallback: 'es',
+    messages: { es }
+  },
   theme: {
     defaultTheme: 'ipsfaTheme',
     themes: {

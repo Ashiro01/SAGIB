@@ -20,6 +20,7 @@ from .views import (
     BienQRCodeView,
     ReporteDepreciacionPDF,
     ReporteDepreciacionExcel,
+    SiguienteCodigoPatrimonialView,
 )
 from .user_views import UserDetailView
 
@@ -45,6 +46,7 @@ urlpatterns = [
     path('reportes/bienes-trasladados/excel/', ReporteBienesTrasladadosExcel.as_view(), name='reporte-bienes-trasladados-excel'),
     path('reportes/depreciacion/pdf/', ReporteDepreciacionPDF.as_view(), name='reporte-depreciacion-pdf'),
     path('reportes/depreciacion/excel/', ReporteDepreciacionExcel.as_view(), name='reporte-depreciacion-excel'),
+    path('bienes/siguiente-codigo/<str:codigo_unidad>/', SiguienteCodigoPatrimonialView.as_view(), name='siguiente-codigo-patrimonial'),
     path('', include(router.urls)),
     path('users/me/', UserDetailView.as_view(), name='user-detail'),
 ]

@@ -81,7 +81,7 @@ export default {
   data() {
     // Generar lista de meses y años para los selectores
     const meses = Array.from({ length: 12 }, (v, k) => ({
-      nombre: new Date(0, k).toLocaleString('es-ES', { month: 'long' }),
+              nombre: new Date(0, k).toLocaleString('es-VE', { month: 'long' }),
       valor: k + 1,
     }));
     const anioActual = new Date().getFullYear();

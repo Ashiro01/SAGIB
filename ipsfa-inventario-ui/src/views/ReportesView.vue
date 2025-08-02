@@ -34,7 +34,7 @@
                 <v-date-picker 
                     v-model="reporte.filtrosUI.fechaDesdePicker" 
                     @update:model-value="reporte.filtrosUI.menuFechaDesde = false"
-                    locale="es-ES"
+                    locale="es-VE"
                 ></v-date-picker>
               </v-menu>
             </v-col>
@@ -55,7 +55,7 @@
                 <v-date-picker 
                     v-model="reporte.filtrosUI.fechaHastaPicker"
                     @update:model-value="reporte.filtrosUI.menuFechaHasta = false"
-                    locale="es-ES"
+                    locale="es-VE"
                 ></v-date-picker>
               </v-menu>
             </v-col>
@@ -309,14 +309,14 @@ export default {
             newVal.forEach(reporte => {
                 if (reporte.filtrosUI.fechaDesdePicker) {
                     const d = new Date(reporte.filtrosUI.fechaDesdePicker);
-                    reporte.filtrosUI.fechaDesdeFormateada = d.toLocaleDateString('es-ES', { year: 'numeric', month: '2-digit', day: '2-digit' });
+                    reporte.filtrosUI.fechaDesdeFormateada = d.toLocaleDateString('es-VE', { year: 'numeric', month: '2-digit', day: '2-digit' });
                 } else {
                     reporte.filtrosUI.fechaDesdeFormateada = null;
                 }
 
                 if (reporte.filtrosUI.fechaHastaPicker) {
                     const d = new Date(reporte.filtrosUI.fechaHastaPicker);
-                    reporte.filtrosUI.fechaHastaFormateada = d.toLocaleDateString('es-ES', { year: 'numeric', month: '2-digit', day: '2-digit' });
+                    reporte.filtrosUI.fechaHastaFormateada = d.toLocaleDateString('es-VE', { year: 'numeric', month: '2-digit', day: '2-digit' });
                 } else {
                     reporte.filtrosUI.fechaHastaFormateada = null;
                 }

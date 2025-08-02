@@ -11,6 +11,32 @@ from django.conf import settings
 import os
 from django.utils import timezone
 
+def draw_watermark(canvas, doc):
+    """Función para dibujar la marca de agua con el logo de IPSFANB"""
+    try:
+        # Ruta del logo de IPSFANB (el logo circular que viste)
+        logo_path = os.path.join(settings.BASE_DIR, 'static/images/watermark.png')
+        
+        if os.path.exists(logo_path):
+            # Obtener dimensiones del documento
+            page_width = doc.pagesize[0]
+            page_height = doc.pagesize[1]
+            
+            # Calcular posición centrada para la marca de agua
+            watermark_width = 4 * inch  # Aumentado de 2.5 a 4 pulgadas
+            watermark_height = 4 * inch  # Aumentado de 2.5 a 4 pulgadas
+            x = (page_width - watermark_width) / 2
+            y = (page_height - watermark_height) / 2
+            
+            # Dibujar la marca de agua con transparencia
+            canvas.saveState()
+            canvas.setFillAlpha(0.08)  # Transparencia del 8% para que sea sutil
+            canvas.drawImage(logo_path, x, y, width=watermark_width, height=watermark_height, mask='auto')
+            canvas.restoreState()
+    except Exception as e:
+        # Si hay error al cargar la marca de agua, continuar sin ella
+        print(f"Error al cargar marca de agua: {e}")
+
 def generar_reporte_inventario_pdf(bienes_queryset, fecha_desde, fecha_hasta, titulo_reporte="INVENTARIO GENERAL DE BIENES PÚBLICOS"):
     # 1. Preparar el buffer de respuesta HTTP para el PDF
     buffer = BytesIO()
@@ -42,7 +68,9 @@ def generar_reporte_inventario_pdf(bienes_queryset, fecha_desde, fecha_hasta, ti
 
     def draw_logo(canvas, doc):
         if logo:
-            canvas.drawImage(logo, doc.leftMargin, doc.height + doc.topMargin - 0.8*inch, width=0.6*inch, height=0.8*inch, mask='auto')
+            canvas.drawImage(logo, doc.leftMargin, doc.height + doc.topMargin - 0.8*inch, width=0.8*inch, height=0.8*inch, mask='auto')
+        # Agregar marca de agua
+        draw_watermark(canvas, doc)
 
     # 4. Título del Reporte
     titulo = Paragraph(titulo_reporte, styles['h2'])
@@ -104,17 +132,20 @@ def generar_reporte_inventario_pdf(bienes_queryset, fecha_desde, fecha_hasta, ti
         colWidths=[0.4*inch, 1.0*inch, 1.5*inch, 0.7*inch, 0.7*inch, 0.8*inch, 1.0*inch, 0.6*inch, 0.8*inch]
     )
     tabla_bienes.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#003366')),
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#003366')),  # Azul para encabezado
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
         ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 7),
         ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
-        ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+        ('TOPPADDING', (0, 0), (-1, 0), 8),
         ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
-        ('LEADING', (0, 0), (-1, -1), 8),
-        ('ROWHEIGHT', (0, 1), (-1, -1), 16),
-        ('FONTSIZE', (0, 0), (-1, -1), 7),
+        ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 1), (-1, -1), 7),
+        ('BOTTOMPADDING', (0, 1), (-1, -1), 4),
+        ('TOPPADDING', (0, 1), (-1, -1), 4),
+        # Sin ROWBACKGROUNDS para que las filas sean transparentes
     ]))
     elementos.append(tabla_bienes)
     elementos.append(Spacer(1, 0.3*inch))
@@ -188,7 +219,9 @@ def generar_reporte_desincorporados_pdf(movimientos_queryset, fecha_desde, fecha
 
     def draw_logo(canvas, doc):
         if logo:
-            canvas.drawImage(logo, doc.leftMargin, doc.height + doc.topMargin - 0.8*inch, width=0.6*inch, height=0.8*inch, mask='auto')
+            canvas.drawImage(logo, doc.leftMargin, doc.height + doc.topMargin - 0.8*inch, width=0.8*inch, height=0.8*inch, mask='auto')
+        # Agregar marca de agua
+        draw_watermark(canvas, doc)
 
     # Título del Reporte
     titulo = Paragraph(titulo_reporte, styles['h2'])
@@ -248,12 +281,15 @@ def generar_reporte_desincorporados_pdf(movimientos_queryset, fecha_desde, fecha
         ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 7),
         ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
-        ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+        ('TOPPADDING', (0, 0), (-1, 0), 8),
         ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
-        ('LEADING', (0, 0), (-1, -1), 8),
-        ('ROWHEIGHT', (0, 1), (-1, -1), 16),
-        ('FONTSIZE', (0, 0), (-1, -1), 7),
+        ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 1), (-1, -1), 7),
+        ('BOTTOMPADDING', (0, 1), (-1, -1), 4),
+        ('TOPPADDING', (0, 1), (-1, -1), 4),
+        # Sin ROWBACKGROUNDS para que las filas sean transparentes
     ]))
     elementos.append(tabla_reporte)
     elementos.append(Spacer(1, 0.3*inch))
@@ -329,7 +365,9 @@ def generar_reporte_traslados_pdf(movimientos_queryset, fecha_desde, fecha_hasta
 
     def draw_logo(canvas, doc):
         if logo:
-            canvas.drawImage(logo, doc.leftMargin, doc.height + doc.topMargin - 0.8*inch, width=0.6*inch, height=0.8*inch, mask='auto')
+            canvas.drawImage(logo, doc.leftMargin, doc.height + doc.topMargin - 0.8*inch, width=0.8*inch, height=0.8*inch, mask='auto')
+        # Agregar marca de agua
+        draw_watermark(canvas, doc)
 
     # Título del Reporte
     titulo = Paragraph(titulo_reporte, styles['h2'])
@@ -389,12 +427,15 @@ def generar_reporte_traslados_pdf(movimientos_queryset, fecha_desde, fecha_hasta
         ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 7),
         ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
-        ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+        ('TOPPADDING', (0, 0), (-1, 0), 8),
         ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
-        ('LEADING', (0, 0), (-1, -1), 8),
-        ('ROWHEIGHT', (0, 1), (-1, -1), 16),
-        ('FONTSIZE', (0, 0), (-1, -1), 7),
+        ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 1), (-1, -1), 7),
+        ('BOTTOMPADDING', (0, 1), (-1, -1), 4),
+        ('TOPPADDING', (0, 1), (-1, -1), 4),
+        # Sin ROWBACKGROUNDS para que las filas sean transparentes
     ]))
     elementos.append(tabla_reporte)
     elementos.append(Spacer(1, 0.3*inch))
@@ -474,7 +515,9 @@ def generar_reporte_depreciacion_pdf(bienes_con_depreciacion, fecha_hasta, titul
     
     def draw_logo(canvas, doc):
         if logo:
-            canvas.drawImage(logo, doc.leftMargin, doc.height + doc.topMargin - 0.8*inch, width=0.6*inch, height=0.8*inch, mask='auto')
+            canvas.drawImage(logo, doc.leftMargin, doc.height + doc.topMargin - 0.8*inch, width=0.8*inch, height=0.8*inch, mask='auto')
+        # Agregar marca de agua
+        draw_watermark(canvas, doc)
     
     # Título y Fecha
     titulo = Paragraph(titulo_reporte, styles['h2'])
@@ -539,12 +582,15 @@ def generar_reporte_depreciacion_pdf(bienes_con_depreciacion, fecha_hasta, titul
         ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 7),
         ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
-        ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+        ('TOPPADDING', (0, 0), (-1, 0), 8),
         ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
-        ('LEADING', (0, 0), (-1, -1), 8),
-        ('ROWHEIGHT', (0, 1), (-1, -1), 16),
-        ('FONTSIZE', (0, 0), (-1, -1), 7),
+        ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 1), (-1, -1), 7),
+        ('BOTTOMPADDING', (0, 1), (-1, -1), 4),
+        ('TOPPADDING', (0, 1), (-1, -1), 4),
+        # Sin ROWBACKGROUNDS para que las filas sean transparentes
     ]))
     elementos.append(tabla_reporte)
     elementos.append(Spacer(1, 0.3*inch))
@@ -627,7 +673,9 @@ def generar_reporte_por_categoria_pdf(bienes_queryset, categoria_nombre, fecha_d
 
     def draw_logo(canvas, doc):
         if logo:
-            canvas.drawImage(logo, doc.leftMargin, doc.height + doc.topMargin - 0.8*inch, width=0.6*inch, height=0.8*inch, mask='auto')
+            canvas.drawImage(logo, doc.leftMargin, doc.height + doc.topMargin - 0.8*inch, width=0.8*inch, height=0.8*inch, mask='auto')
+        # Agregar marca de agua
+        draw_watermark(canvas, doc)
 
     # Título del Reporte
     titulo = Paragraph(titulo_reporte, styles['h2'])
@@ -691,12 +739,15 @@ def generar_reporte_por_categoria_pdf(bienes_queryset, categoria_nombre, fecha_d
         ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 7),
         ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
-        ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+        ('TOPPADDING', (0, 0), (-1, 0), 8),
         ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
-        ('LEADING', (0, 0), (-1, -1), 8),
-        ('ROWHEIGHT', (0, 1), (-1, -1), 16),
-        ('FONTSIZE', (0, 0), (-1, -1), 7),
+        ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 1), (-1, -1), 7),
+        ('BOTTOMPADDING', (0, 1), (-1, -1), 4),
+        ('TOPPADDING', (0, 1), (-1, -1), 4),
+        # Sin ROWBACKGROUNDS para que las filas sean transparentes
     ]))
     elementos.append(tabla_bienes)
     elementos.append(Spacer(1, 0.3*inch))
@@ -777,7 +828,9 @@ def generar_reporte_por_unidad_pdf(bienes_queryset, unidad_nombre, fecha_desde, 
 
     def draw_logo(canvas, doc):
         if logo:
-            canvas.drawImage(logo, doc.leftMargin, doc.height + doc.topMargin - 0.8*inch, width=0.6*inch, height=0.8*inch, mask='auto')
+            canvas.drawImage(logo, doc.leftMargin, doc.height + doc.topMargin - 0.8*inch, width=0.8*inch, height=0.8*inch, mask='auto')
+        # Agregar marca de agua
+        draw_watermark(canvas, doc)
 
     # Título del Reporte
     titulo = Paragraph(titulo_reporte, styles['h2'])
@@ -841,12 +894,15 @@ def generar_reporte_por_unidad_pdf(bienes_queryset, unidad_nombre, fecha_desde, 
         ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 7),
         ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
-        ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+        ('TOPPADDING', (0, 0), (-1, 0), 8),
         ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
-        ('LEADING', (0, 0), (-1, -1), 8),
-        ('ROWHEIGHT', (0, 1), (-1, -1), 16),
-        ('FONTSIZE', (0, 0), (-1, -1), 7),
+        ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 1), (-1, -1), 7),
+        ('BOTTOMPADDING', (0, 1), (-1, -1), 4),
+        ('TOPPADDING', (0, 1), (-1, -1), 4),
+        # Sin ROWBACKGROUNDS para que las filas sean transparentes
     ]))
     elementos.append(tabla_bienes)
     elementos.append(Spacer(1, 0.3*inch))

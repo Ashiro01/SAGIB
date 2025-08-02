@@ -135,7 +135,7 @@ export default {
       if (value === null || typeof value === 'undefined') return 'Bs. 0,00';
       const numValue = parseFloat(value);
       if (isNaN(numValue)) return 'N/A';
-      return `Bs. ${numValue.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+              return `Bs. ${numValue.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     }
   },
   async mounted() {

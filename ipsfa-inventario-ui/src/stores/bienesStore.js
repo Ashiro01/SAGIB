@@ -198,5 +198,22 @@ export const useBienesStore = defineStore('bienes', {
       }
       return formattedError;
     },
+
+    // Acción para obtener el siguiente código patrimonial disponible
+    async obtenerSiguienteCodigoPatrimonial(codigoUnidad) {
+      this.loading = true;
+      this.error = null;
+      try {
+        const response = await apiClient.get(`/bienes/siguiente-codigo/${codigoUnidad}/`);
+        console.log('Siguiente código patrimonial obtenido:', response.data);
+        return response.data.siguiente_numero;
+      } catch (err) {
+        this.error = 'Error al obtener el siguiente código patrimonial.';
+        console.error('Error en obtenerSiguienteCodigoPatrimonial:', err.response ? err.response.data : err.message);
+        throw err;
+      } finally {
+        this.loading = false;
+      }
+    },
   },
 });

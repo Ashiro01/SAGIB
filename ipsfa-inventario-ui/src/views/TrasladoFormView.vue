@@ -76,7 +76,7 @@
                 </template>
                 <v-date-picker
                   v-model="traslado.fecha_movimiento_picker" 
-                  no-title locale="es-ES"
+                  no-title locale="es-VE"
                   @update:model-value="actualizarFechaTraslado" 
                 ></v-date-picker> 
               </v-menu>
@@ -169,7 +169,7 @@ export default {
       // bien: se asignará desde bienSeleccionadoId
       tipo_movimiento: 'TRASLADO', // Fijo para este formulario
       fecha_movimiento_picker: new Date(), // Inicializar con fecha actual para el picker
-      fecha_movimiento_formateada: new Date().toLocaleDateString('es-ES', { year: 'numeric', month: '2-digit', day: '2-digit'}),
+      fecha_movimiento_formateada: new Date().toLocaleDateString('es-VE', { year: 'numeric', month: '2-digit', day: '2-digit'}),
 
       unidad_origen_id: null, // ID de la unidad de origen
       unidad_destino_id: null, // ID de la unidad de destino
@@ -277,7 +277,7 @@ export default {
     actualizarFechaTraslado() {
       if (this.traslado.fecha_movimiento_picker) {
         const d = new Date(this.traslado.fecha_movimiento_picker);
-        this.traslado.fecha_movimiento_formateada = d.toLocaleDateString('es-ES', {
+        this.traslado.fecha_movimiento_formateada = d.toLocaleDateString('es-VE', {
           year: 'numeric', month: '2-digit', day: '2-digit'
         });
       } else {
@@ -368,7 +368,7 @@ export default {
       this.traslado = {
         tipo_movimiento: 'TRASLADO',
         fecha_movimiento_picker: new Date(),
-        fecha_movimiento_formateada: new Date().toLocaleDateString('es-ES', { year: 'numeric', month: '2-digit', day: '2-digit'}),
+        fecha_movimiento_formateada: new Date().toLocaleDateString('es-VE', { year: 'numeric', month: '2-digit', day: '2-digit'}),
         unidad_origen_id: null,
         unidad_destino_id: null,
         responsable_anterior_nombre: '',

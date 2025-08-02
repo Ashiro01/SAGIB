@@ -16,13 +16,16 @@ class BienSerializer(serializers.ModelSerializer):
         allow_null=True,
         required=False
     )
+    proveedor_nombre = serializers.CharField(source='proveedor.nombre_proveedor', read_only=True)
+    proveedor_rif = serializers.CharField(source='proveedor.rif', read_only=True)
 
     class Meta:
         model = Bien
         fields = [
             'id', 'codigo_patrimonial', 'codigo_anterior', 'descripcion', 
             'marca', 'modelo', 'serial', 'cantidad', 'fecha_adquisicion',
-            'n_orden_compra_factura', 'nombre_proveedor', 
+            'n_orden_compra_factura', 'proveedor', 'proveedor_nombre', 'proveedor_rif',
+            'motivo_adquisicion',
             'valor_unitario_bs', 'valor_unitario_usd',
             'ubicacion_fisica_especifica', 'responsable_asignado_nombre', 
             'responsable_asignado_cargo',
@@ -36,7 +39,7 @@ class BienSerializer(serializers.ModelSerializer):
             'categoria',
             'categoria_nombre',
         ]
-        read_only_fields = ('id', 'codigo_patrimonial', 'fecha_creacion', 'fecha_actualizacion', 'unidad_administrativa_actual_nombre', 'categoria_nombre')
+        read_only_fields = ('id', 'fecha_creacion', 'fecha_actualizacion', 'unidad_administrativa_actual_nombre', 'categoria_nombre')
 
     # def get_estado_bien_display(self, obj):
     #     return obj.get_estado_bien_display()

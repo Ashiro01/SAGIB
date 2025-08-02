@@ -144,7 +144,7 @@ export default {
         value = numValue;
       }
       const fixedValue = parseFloat(value.toFixed(2));
-      return `${currencySymbol} ${fixedValue.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+              return `${currencySymbol} ${fixedValue.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     },
     verBien(item) {
       this.$router.push({ name: 'detalleBien', params: { id: item.id } });

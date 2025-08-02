@@ -388,7 +388,13 @@ class ReporteInventarioGeneralPDF(APIView):
         fecha_desde = request.query_params.get('fecha_desde', 'N/A')
         fecha_hasta = request.query_params.get('fecha_hasta', 'N/A')
 
+        # Filtrar bienes por fecha de creación si se proporcionan fechas
         bienes = Bien.objects.all().order_by('codigo_patrimonial')
+        
+        if fecha_desde != 'N/A' and fecha_hasta != 'N/A':
+            bienes = bienes.filter(
+                fecha_creacion__date__range=[fecha_desde, fecha_hasta]
+            )
 
         buffer = generar_reporte_inventario_pdf(bienes, fecha_desde, fecha_hasta)
 
@@ -401,9 +407,16 @@ class ReporteInventarioGeneralExcel(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, *args, **kwargs):
-        # Aquí puedes añadir la misma lógica de filtrado que usarías para el PDF
-        # Por ahora, obtenemos todos los bienes.
+        fecha_desde = request.query_params.get('fecha_desde', 'N/A')
+        fecha_hasta = request.query_params.get('fecha_hasta', 'N/A')
+        
+        # Filtrar bienes por fecha de creación si se proporcionan fechas
         bienes = Bien.objects.all().order_by('codigo_patrimonial')
+        
+        if fecha_desde != 'N/A' and fecha_hasta != 'N/A':
+            bienes = bienes.filter(
+                fecha_creacion__date__range=[fecha_desde, fecha_hasta]
+            )
 
         titulo = "INVENTARIO GENERAL DE BIENES PÚBLICOS"
         buffer = generar_reporte_inventario_excel(bienes, titulo)
@@ -437,6 +450,12 @@ class ReporteBienesPorCategoriaPDF(APIView):
             fecha_desde = request.query_params.get('fecha_desde', 'N/A')
             fecha_hasta = request.query_params.get('fecha_hasta', 'N/A')
 
+            # Filtrar por fechas si se proporcionan
+            if fecha_desde != 'N/A' and fecha_hasta != 'N/A':
+                bienes = bienes.filter(
+                    fecha_creacion__date__range=[fecha_desde, fecha_hasta]
+                )
+
             # Llamar a la función específica para categorías
             buffer = generar_reporte_por_categoria_pdf(bienes, categoria.nombre, fecha_desde, fecha_hasta, titulo)
 
@@ -460,6 +479,15 @@ class ReporteBienesPorCategoriaExcel(APIView):
             categoria = Categoria.objects.get(pk=categoria_id)
             bienes = Bien.objects.filter(categoria=categoria).order_by('codigo_patrimonial')
 
+            # Filtrar por fechas si se proporcionan
+            fecha_desde = request.query_params.get('fecha_desde', 'N/A')
+            fecha_hasta = request.query_params.get('fecha_hasta', 'N/A')
+            
+            if fecha_desde != 'N/A' and fecha_hasta != 'N/A':
+                bienes = bienes.filter(
+                    fecha_creacion__date__range=[fecha_desde, fecha_hasta]
+                )
+
             titulo = f"Inventario de Bienes - Categoría: {categoria.nombre}"
 
             buffer = generar_reporte_inventario_excel(bienes, titulo)
@@ -481,19 +509,27 @@ class ReporteBienesPorUnidadPDF(APIView):
         unidad_id = request.query_params.get('unidad_id')
         if not unidad_id:
             return Response({'error': 'Debe proporcionar un ID de unidad.'}, status=status.HTTP_400_BAD_REQUEST)
+
         try:
             unidad = UnidadAdministrativa.objects.get(pk=unidad_id)
             bienes = Bien.objects.filter(unidad_administrativa_actual=unidad).order_by('codigo_patrimonial')
-            titulo = f"INVENTARIO DE BIENES - UNIDAD: {unidad.nombre.upper()}"
+
+            # Filtrar por fechas si se proporcionan
             fecha_desde = request.query_params.get('fecha_desde', 'N/A')
             fecha_hasta = request.query_params.get('fecha_hasta', 'N/A')
             
-            # Llamar a la función específica para unidades
+            if fecha_desde != 'N/A' and fecha_hasta != 'N/A':
+                bienes = bienes.filter(
+                    fecha_creacion__date__range=[fecha_desde, fecha_hasta]
+                )
+
+            titulo = f"INVENTARIO DE BIENES - UNIDAD ADMINISTRATIVA: {unidad.nombre.upper()}"
             buffer = generar_reporte_por_unidad_pdf(bienes, unidad.nombre, fecha_desde, fecha_hasta, titulo)
-            
+
             response = HttpResponse(buffer, content_type='application/pdf')
             response['Content-Disposition'] = f'attachment; filename="reporte_bienes_unidad_{unidad.nombre}.pdf"'
             return response
+
         except UnidadAdministrativa.DoesNotExist:
             return Response({'error': 'La unidad especificada no existe.'}, status=status.HTTP_404_NOT_FOUND)
 
@@ -657,3 +693,45 @@ class ReporteDepreciacionExcel(APIView):
         response = HttpResponse(buffer, content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
         response['Content-Disposition'] = 'attachment; filename="reporte_depreciacion.xlsx"'
         return response
+
+class SiguienteCodigoPatrimonialView(APIView):
+    """
+    Vista para obtener el siguiente código patrimonial disponible para una unidad administrativa.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, codigo_unidad, format=None):
+        try:
+            # Buscar el mayor número de código patrimonial para esta unidad
+            bienes_existentes = Bien.objects.filter(
+                codigo_patrimonial__startswith=f"{codigo_unidad}-"
+            ).exclude(codigo_patrimonial__isnull=True).exclude(codigo_patrimonial='')
+            
+            if bienes_existentes.exists():
+                # Extraer números de los códigos existentes
+                numeros = []
+                for bien in bienes_existentes:
+                    if bien.codigo_patrimonial and '-' in bien.codigo_patrimonial:
+                        try:
+                            numero = int(bien.codigo_patrimonial.split('-')[-1])
+                            numeros.append(numero)
+                        except (ValueError, IndexError):
+                            continue
+                
+                if numeros:
+                    siguiente_numero = max(numeros) + 1
+                else:
+                    siguiente_numero = 1
+            else:
+                siguiente_numero = 1
+            
+            return Response({
+                'siguiente_numero': siguiente_numero,
+                'codigo_unidad': codigo_unidad,
+                'codigo_completo': f"{codigo_unidad}-{siguiente_numero:03d}"
+            })
+            
+        except Exception as e:
+            return Response({
+                'error': f'Error al obtener el siguiente código: {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

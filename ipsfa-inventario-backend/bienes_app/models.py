@@ -15,6 +15,20 @@ ESTADO_BIEN_CHOICES = [
     ('DESINCORPORADO', 'Desincorporado'),
 ]
 
+MOTIVO_ADQUISICION_CHOICES = [
+    ('COMPRA_DIRECTA', 'Compra Directa'),
+    ('LICITACION', 'Licitación Pública'),
+    ('DACION_PAGO', 'Dación en Pago'),
+    ('DONACION', 'Donación'),
+    ('TRANSFERENCIA', 'Transferencia de Otros Organismos'),
+    ('CONSTRUCCION_PROPIA', 'Construcción Propia'),
+    ('RECUPERACION', 'Recuperación de Bienes'),
+    ('COMODATO', 'Comodato'),
+    ('ARRENDAMIENTO', 'Arrendamiento con Opción de Compra'),
+    ('HERENCIA', 'Herencia o Legado'),
+    ('OTRO', 'Otro'),
+]
+
 class Categoria(models.Model):
     nombre = models.CharField(max_length=100, unique=True, verbose_name="Nombre de la Categoría")
     descripcion = models.TextField(blank=True, null=True, verbose_name="Descripción")
@@ -65,9 +79,21 @@ class Bien(models.Model):
         null=True, 
         verbose_name="N° Orden de Compra o Factura"
     )
-    # Para 'proveedor', podríamos tener una FK a un modelo Proveedor más adelante.
-    # Por ahora, un CharField como en tu frontend.
-    nombre_proveedor = models.CharField(max_length=200, blank=True, null=True, verbose_name="Nombre del Proveedor") 
+    # Relación con el modelo Proveedor
+    proveedor = models.ForeignKey(
+        'proveedores_app.Proveedor',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name="Proveedor"
+    ) 
+
+    motivo_adquisicion = models.CharField(
+        max_length=50,
+        choices=MOTIVO_ADQUISICION_CHOICES,
+        default='COMPRA_DIRECTA',
+        verbose_name="Motivo de Adquisición"
+    )
 
     valor_unitario_bs = models.DecimalField(
         max_digits=19, # Suficiente para números grandes (ej: miles de billones)

@@ -39,7 +39,7 @@
                   v-model="bien.fecha_adquisicion_picker"
                   no-title
                   @update:model-value="actualizarFechaAdquisicion"
-                  locale="es-ES"
+                  locale="es-VE"
                 ></v-date-picker>
               </v-menu>
 
@@ -88,12 +88,48 @@
                 dense
               ></v-text-field>
 
-              <v-text-field
-                v-model="bien.proveedor"
+              <v-select
+                v-model="bien.proveedor_id"
+                :items="listaProveedores"
+                item-value="id"
+                item-title="title"
                 label="Proveedor"
                 outlined
                 dense
-              ></v-text-field>
+                :loading="cargandoProveedores"
+                clearable
+                :hint="proveedorHint"
+                persistent-hint
+              >
+                <template v-slot:item="{ props, item }">
+                  <v-list-item v-bind="props">
+                    <v-list-item-subtitle v-if="item.raw.rif">
+                      RIF: {{ item.raw.rif }}
+                    </v-list-item-subtitle>
+                    <v-list-item-subtitle v-if="item.raw.contacto_principal_nombre">
+                      Contacto: {{ item.raw.contacto_principal_nombre }}
+                    </v-list-item-subtitle>
+                  </v-list-item>
+                </template>
+                <template v-slot:selection="{ item }">
+                  <span>{{ item.raw.nombre_proveedor }}</span>
+                  <span v-if="item.raw.rif" class="text-caption text-grey-darken-1 ml-2">
+                    ({{ item.raw.rif }})
+                  </span>
+                </template>
+              </v-select>
+
+              <v-select
+                v-model="bien.motivo_adquisicion"
+                :items="motivosAdquisicion"
+                item-title="title"
+                item-value="value"
+                label="Motivo de Adquisición"
+                outlined
+                dense
+                :rules="[rules.required]"
+                required
+              ></v-select>
 
               <v-text-field
                 v-model="bien.valor_unitario_bs"
@@ -128,7 +164,42 @@
                 dense
                 :loading="cargandoUnidades"
                 clearable
+                @update:model-value="actualizarCodigoPatrimonial"
               ></v-select>
+
+              <v-text-field
+                v-model="bien.codigo_patrimonial"
+                label="Código Patrimonial"
+                :rules="[rules.codigoPatrimonial]"
+                required
+                outlined
+                dense
+                :hint="codigoPatrimonialHint"
+                persistent-hint
+                :placeholder="codigoPatrimonialPlaceholder"
+                :append-inner-icon="bien.unidad_administrativa_actual_id ? 'mdi-numeric' : ''"
+                @click:append-inner="generarSiguienteCodigo"
+                :disabled="!bien.unidad_administrativa_actual_id"
+              >
+                <template v-slot:append-inner>
+                  <v-tooltip
+                    v-if="bien.unidad_administrativa_actual_id"
+                    text="Generar siguiente número automáticamente"
+                    location="top"
+                  >
+                    <template v-slot:activator="{ props }">
+                      <v-icon
+                        v-bind="props"
+                        @click="generarSiguienteCodigo"
+                        color="primary"
+                        class="cursor-pointer"
+                      >
+                        mdi-numeric
+                      </v-icon>
+                    </template>
+                  </v-tooltip>
+                </template>
+              </v-text-field>
 
               <v-text-field
                 v-model="bien.ubicacion_fisica_especifica"
@@ -236,6 +307,7 @@
 import { useBienesStore } from '@/stores/bienesStore';
 import { useUnidadAdministrativaStore } from '@/stores/unidadAdministrativaStore';
 import { useCategoriaStore } from '@/stores/categoriaStore';
+import { useProveedorStore } from '@/stores/proveedorStore';
 
 export default {
   name: 'BienFormView',
@@ -247,6 +319,7 @@ export default {
       bien: {
         id: null,
         codigo_anterior: '',
+        codigo_patrimonial: '',
         descripcion: '',
         marca: '',
         modelo: '',
@@ -276,10 +349,31 @@ export default {
         { title: 'Línea Recta', value: 'LINEA_RECTA' },
         { title: 'Saldo Decreciente', value: 'SALDO_DECRECIENTE' },
       ],
+      motivosAdquisicion: [
+        { title: 'Compra Directa', value: 'COMPRA_DIRECTA' },
+        { title: 'Licitación Pública', value: 'LICITACION' },
+        { title: 'Dación en Pago', value: 'DACION_PAGO' },
+        { title: 'Donación', value: 'DONACION' },
+        { title: 'Transferencia de Otros Organismos', value: 'TRANSFERENCIA' },
+        { title: 'Construcción Propia', value: 'CONSTRUCCION_PROPIA' },
+        { title: 'Recuperación de Bienes', value: 'RECUPERACION' },
+        { title: 'Comodato', value: 'COMODATO' },
+        { title: 'Arrendamiento con Opción de Compra', value: 'ARRENDAMIENTO' },
+        { title: 'Herencia o Legado', value: 'HERENCIA' },
+        { title: 'Otro', value: 'OTRO' },
+      ],
       rules: {
         required: value => !!value || 'Este campo es requerido.',
         positiveNumber: value => (parseFloat(value) > 0) || 'Debe ser un número positivo.',
         minLength: min => value => (value && value.length >= min) || `Mínimo ${min} caracteres.`,
+        codigoPatrimonial: value => {
+          if (!value) return 'El código patrimonial es requerido.';
+          if (!value.includes('-')) return 'El código debe tener el formato: CÓDIGO-NÚMERO';
+          const partes = value.split('-');
+          if (partes.length < 2) return 'El código debe tener el formato: CÓDIGO-NÚMERO';
+          if (!partes[1] || partes[1].trim() === '') return 'Debe completar el número del bien.';
+          return true;
+        },
       },
       menuFechaAdquisicion: false,
       cargandoUnidades: false,
@@ -301,6 +395,42 @@ export default {
       const unidadAdminStore = useUnidadAdministrativaStore();
       const categoriaStore = useCategoriaStore();
       return unidadAdminStore.isLoading || categoriaStore.isLoading;
+    },
+    codigoPatrimonialHint() {
+      if (this.bien.unidad_administrativa_actual_id) {
+        const unidadSeleccionada = this.listaUnidadesAdministrativas.find(
+          u => u.id === this.bien.unidad_administrativa_actual_id
+        );
+        if (unidadSeleccionada) {
+          return `Código de la unidad: ${unidadSeleccionada.codigo}. Complete el número del bien.`;
+        }
+      }
+      return 'Seleccione una unidad administrativa primero';
+    },
+    codigoPatrimonialPlaceholder() {
+      if (this.bien.unidad_administrativa_actual_id) {
+        const unidadSeleccionada = this.listaUnidadesAdministrativas.find(
+          u => u.id === this.bien.unidad_administrativa_actual_id
+        );
+        if (unidadSeleccionada) {
+          return `${unidadSeleccionada.codigo}-`;
+        }
+      }
+      return 'Ej: IPSFA-001';
+    },
+    listaProveedores() {
+      const proveedorStore = useProveedorStore();
+      return proveedorStore.listaProveedores.filter(p => p.activo).map(proveedor => ({
+        ...proveedor,
+        title: proveedor.nombre_proveedor // Para que Vuetify use este campo como título
+      }));
+    },
+    cargandoProveedores() {
+      const proveedorStore = useProveedorStore();
+      return proveedorStore.isLoading;
+    },
+    proveedorHint() {
+      return 'Seleccione un proveedor registrado. Se mostrará el nombre, RIF y contacto.';
     }
   },
   methods: {
@@ -315,6 +445,14 @@ export default {
         this.cargandoUnidades = false;
       }
     },
+    async cargarProveedoresParaSelector() {
+      const proveedorStore = useProveedorStore();
+      try {
+        await proveedorStore.fetchProveedores();
+      } catch (error) {
+        this.$emit('show-snackbar', { message: 'Error al cargar proveedores para el selector.', color: 'error' });
+      }
+    },
     async cargarBienParaEditar(bienId) {
       const bienesStore = useBienesStore();
       this.guardando = true;
@@ -323,6 +461,7 @@ export default {
         if (bienDesdeAPI) {
           this.bien.id = bienDesdeAPI.id;
           this.bien.codigo_anterior = bienDesdeAPI.codigo_anterior;
+          this.bien.codigo_patrimonial = bienDesdeAPI.codigo_patrimonial;
           this.bien.descripcion = bienDesdeAPI.descripcion;
           this.bien.marca = bienDesdeAPI.marca;
           this.bien.modelo = bienDesdeAPI.modelo;
@@ -331,13 +470,14 @@ export default {
 
           if (bienDesdeAPI.fecha_adquisicion) {
             this.bien.fecha_adquisicion_picker = bienDesdeAPI.fecha_adquisicion;
-            this.bien.fecha_adquisicion = new Date(bienDesdeAPI.fecha_adquisicion + 'T00:00:00').toLocaleDateString('es-ES');
+            this.bien.fecha_adquisicion = new Date(bienDesdeAPI.fecha_adquisicion + 'T00:00:00').toLocaleDateString('es-VE');
           } else {
             this.bien.fecha_adquisicion_picker = null;
             this.bien.fecha_adquisicion = null;
           }
           this.bien.n_orden_compra_factura = bienDesdeAPI.n_orden_compra_factura;
-          this.bien.proveedor = bienDesdeAPI.nombre_proveedor;
+          this.bien.proveedor_id = bienDesdeAPI.proveedor;
+          this.bien.motivo_adquisicion = bienDesdeAPI.motivo_adquisicion || 'COMPRA_DIRECTA';
           this.bien.valor_unitario_bs = bienDesdeAPI.valor_unitario_bs;
           this.bien.valor_unitario_usd = bienDesdeAPI.valor_unitario_usd;
 
@@ -377,6 +517,7 @@ export default {
       const bienesStore = useBienesStore();
       let payload = {
         codigo_anterior: this.bien.codigo_anterior || null,
+        codigo_patrimonial: this.bien.codigo_patrimonial,
         descripcion: this.bien.descripcion,
         marca: this.bien.marca || null,
         modelo: this.bien.modelo || null,
@@ -386,7 +527,8 @@ export default {
                             ? new Date(this.bien.fecha_adquisicion_picker).toISOString().split('T')[0] 
                             : null,
         n_orden_compra_factura: this.bien.n_orden_compra_factura || null,
-        nombre_proveedor: this.bien.proveedor || null,
+        proveedor: this.bien.proveedor_id,
+        motivo_adquisicion: this.bien.motivo_adquisicion,
         valor_unitario_bs: parseFloat(this.bien.valor_unitario_bs) || 0,
         valor_unitario_usd: this.bien.valor_unitario_usd ? parseFloat(this.bien.valor_unitario_usd) : null,
 
@@ -439,6 +581,7 @@ export default {
       this.bien = {
         id: null,
         codigo_anterior: '',
+        codigo_patrimonial: '',
         descripcion: '',
         marca: '',
         modelo: '',
@@ -462,6 +605,10 @@ export default {
         metodo_depreciacion: null,
         // --- NUEVO: Categoría ---
         categoria: null,
+        // --- NUEVO: Proveedor ---
+        proveedor_id: null,
+        // --- NUEVO: Motivo de Adquisición ---
+        motivo_adquisicion: 'COMPRA_DIRECTA',
       };
       if (this.$refs.formBien) {
         this.$refs.formBien.reset();
@@ -469,19 +616,86 @@ export default {
     },
     actualizarFechaAdquisicion(fecha) {
       if (fecha) {
-        this.bien.fecha_adquisicion = new Date(fecha).toLocaleDateString('es-ES');
+        this.bien.fecha_adquisicion = new Date(fecha).toLocaleDateString('es-VE');
       } else {
         this.bien.fecha_adquisicion = null;
+      }
+    },
+    actualizarCodigoPatrimonial(unidadId) {
+      if (unidadId) {
+        const unidadSeleccionada = this.listaUnidadesAdministrativas.find(u => u.id === unidadId);
+        if (unidadSeleccionada) {
+          // Si ya hay un código patrimonial, mantener solo la parte numérica
+          const codigoActual = this.bien.codigo_patrimonial;
+          if (codigoActual && codigoActual.includes('-')) {
+            const partes = codigoActual.split('-');
+            if (partes.length > 1) {
+              // Mantener solo la parte numérica después del último guión
+              const numero = partes[partes.length - 1];
+              this.bien.codigo_patrimonial = `${unidadSeleccionada.codigo}-${numero}`;
+            } else {
+              this.bien.codigo_patrimonial = `${unidadSeleccionada.codigo}-`;
+            }
+          } else {
+            // Si no hay código o no tiene formato, solo agregar el código de la unidad
+            this.bien.codigo_patrimonial = `${unidadSeleccionada.codigo}-`;
+          }
+        }
+      } else {
+        // Si se deselecciona la unidad, limpiar el código patrimonial
+        this.bien.codigo_patrimonial = '';
+      }
+    },
+    async generarSiguienteCodigo() {
+      if (!this.bien.unidad_administrativa_actual_id) {
+        this.$emit('show-snackbar', { 
+          message: 'Debe seleccionar una unidad administrativa primero.', 
+          color: 'warning' 
+        });
+        return;
+      }
+
+      const unidadSeleccionada = this.listaUnidadesAdministrativas.find(
+        u => u.id === this.bien.unidad_administrativa_actual_id
+      );
+      
+      if (!unidadSeleccionada) {
+        this.$emit('show-snackbar', { 
+          message: 'Error al obtener información de la unidad administrativa.', 
+          color: 'error' 
+        });
+        return;
+      }
+
+      try {
+        // Obtener el siguiente número disponible para esta unidad
+        const bienesStore = useBienesStore();
+        const siguienteNumero = await bienesStore.obtenerSiguienteCodigoPatrimonial(unidadSeleccionada.codigo);
+        
+        this.bien.codigo_patrimonial = `${unidadSeleccionada.codigo}-${siguienteNumero}`;
+        
+        this.$emit('show-snackbar', { 
+          message: `Código patrimonial generado: ${this.bien.codigo_patrimonial}`, 
+          color: 'success' 
+        });
+      } catch (error) {
+        console.error('Error al generar código patrimonial:', error);
+        this.$emit('show-snackbar', { 
+          message: 'Error al generar el código patrimonial automáticamente.', 
+          color: 'error' 
+        });
       }
     },
   },
   async created() {
     const unidadAdminStore = useUnidadAdministrativaStore();
     const categoriaStore = useCategoriaStore();
+    const proveedorStore = useProveedorStore();
     try {
       await Promise.all([
         unidadAdminStore.fetchUnidades(),
-        categoriaStore.fetchCategorias()
+        categoriaStore.fetchCategorias(),
+        proveedorStore.fetchProveedores()
       ]);
     } catch (error) {
       this.$emit('show-snackbar', { message: 'Error al cargar catálogos necesarios.', color: 'error' });
@@ -497,4 +711,7 @@ export default {
 
 <style scoped>
 /* Estilos específicos para esta vista */
+.cursor-pointer {
+  cursor: pointer;
+}
 </style>

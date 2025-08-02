@@ -55,7 +55,7 @@
                 </v-chip>
               </div>
             </div>
-            <v-divider></v-divider>
+          <v-divider></v-divider>
           </div>
 
           <!-- Opciones del menú -->
@@ -68,7 +68,7 @@
             >
               <v-list-item-title class="font-weight-medium">Mi Perfil</v-list-item-title>
               <v-list-item-subtitle class="text-caption">Gestionar información personal</v-list-item-subtitle>
-            </v-list-item>
+          </v-list-item>
 
             <v-list-item 
               @click="logout" 
@@ -78,8 +78,8 @@
             >
               <v-list-item-title class="font-weight-medium">Cerrar Sesión</v-list-item-title>
               <v-list-item-subtitle class="text-caption">Salir de la aplicación</v-list-item-subtitle>
-            </v-list-item>
-          </v-list>
+          </v-list-item>
+        </v-list>
         </v-card>
       </v-menu>
     </v-app-bar>
@@ -175,9 +175,7 @@ export default {
       { title: 'Gestión de Usuarios', icon: 'mdi-account-group-outline', route: '/usuarios', roles: ['Administrador'] },
       { title: 'Gestión de Roles', icon: 'mdi-shield-key-outline', route: '/roles', roles: ['Administrador'] },
       { title: 'Unidades Administrativas', icon: 'mdi-office-building-outline', route: '/unidades-administrativas' },
-      { title: 'Logs de Auditoría', icon: 'mdi-text-box-search-outline', route: '/audit-logs', roles: ['Administrador', 'Auditor'] },
-      { title: 'Carga Masiva', icon: 'mdi-upload', route: '/bienes/carga-masiva' },
-      { title: 'Configuración', icon: 'mdi-cog-outline', route: '/configuracion' }
+      { title: 'Logs de Auditoría', icon: 'mdi-text-box-search-outline', route: '/audit-logs', roles: ['Administrador', 'Auditor'] }
     ],
     snackbar: {
       visible: false,
